@@ -22,8 +22,9 @@ class Signal():
         self.device = alldevices #a list of all the devices
         self.data = dataframe[:, 1 :, datacols]
         self.robdeg = np.full((np.shape(dataframe)[0],), np.inf) 
-        self.label = dataframe[:, 1:, labelidx] #leftmost col is timestamp
         #the robust degree we use as objfunc for learning tree
+        self.label = dataframe[:, -1, labelidx] #leftmost col is timestamp, 
+        #right now using the last state of the time interval for our label device in data.
         self.lblclass = np.unique(self.label)
         self.minintval = self.time[1] - self.time[0] #currently assuming equal size intval
         self.classdict = classdict

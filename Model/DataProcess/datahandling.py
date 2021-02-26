@@ -53,9 +53,11 @@ def construct_classdict(dataset, devices):
         else:
             possibleStates = np.unique(dataset[:, 1:, i+1])
             itemdict = {} #maps individual item's state to each integer we converts
+            statedict = {} #map each integer to the state it is representing.
             for k3 in range(np.shape(possibleStates)[0]):
                 itemdict[possibleStates[k3]] = k3 
-            classdict[devices[i]] = itemdict 
+                statedict[k3] = possibleStates[k3]
+            classdict[devices[i]] = statedict
             for k1 in range(np.shape(dataset)[0]):
                 for k2 in range(1, np.shape(dataset)[1]):
                     dataset[k1, k2, i+1] = itemdict[dataset[k1, k2, i+1]]
@@ -85,5 +87,4 @@ def trainingset(dataset, alldevices, interval = 30, offset = 5):
     data_by_intervals = separate_by_intervals(dataset, interval, offset)
     ds, classdict = construct_classdict(data_by_intervals, alldevices)
     res = construct_trainingset(ds, classdict, alldevices)
-    print(res)
     return res

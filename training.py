@@ -21,9 +21,9 @@ for signals in training_set:
     lbldict = signals.classdict[labeldevice]
     tree_output_file = "LearnedModel/treeprint_{0}.txt".format(labeldevice)
     with open(tree_output_file, "w") as out:
+        out.write("LabelClass: {0}\n".format(labeldevice))
         treetxt = TreeToString(T, lbldict, signals.device)
         out.write(treetxt)
-    break
 
 
 

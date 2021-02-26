@@ -15,14 +15,14 @@ def primInit(num_signal_dim):
     slparam = [math.nan, math.nan, math.nan, math.nan]
 
     for dim_idx in range(num_signal_dim):
-        primitives.append(FLPrimitives('G', dim_idx, '<', flparam, math.nan))
-        primitives.append(FLPrimitives('G', dim_idx, '>', flparam, math.nan))
-        primitives.append(FLPrimitives('F', dim_idx, '<', flparam, math.nan))
-        primitives.append(FLPrimitives('F', dim_idx, '>', flparam, math.nan))
-        primitives.append(FLPrimitives('GF', dim_idx, '<', slparam, math.nan))
-        primitives.append(FLPrimitives('GF', dim_idx, '>', slparam, math.nan))
-        primitives.append(FLPrimitives('FG', dim_idx, '<', slparam, math.nan))
-        primitives.append(FLPrimitives('FG', dim_idx, '>', slparam, math.nan))
+        primitives.append(FLPrimitives('G', dim_idx, '<', flparam, math.inf))
+        primitives.append(FLPrimitives('G', dim_idx, '>', flparam, math.inf))
+        primitives.append(FLPrimitives('F', dim_idx, '<', flparam, math.inf))
+        primitives.append(FLPrimitives('F', dim_idx, '>', flparam, math.inf))
+        primitives.append(FLPrimitives('GF', dim_idx, '<', slparam, math.inf))
+        primitives.append(FLPrimitives('GF', dim_idx, '>', slparam, math.inf))
+        primitives.append(FLPrimitives('FG', dim_idx, '<', slparam, math.inf))
+        primitives.append(FLPrimitives('FG', dim_idx, '>', slparam, math.inf))
     
     return primitives
     
@@ -40,7 +40,8 @@ def primOptimizationInit(signal, primitives):
             problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal)
         else:
             raise Exception("Invalid primitives")
-        prim.param, prim.objfunval = primitiveOptimization(problem)
+        primitives[i], objfunval = primitiveOptimization(problem)
+        primitives[i].objfunval = objfunval
     return primitives
 
 def primGetBest(primitives):
@@ -53,6 +54,8 @@ def primGetBest(primitives):
         if prim.objfunval < minimum:
             minprim = prim 
             minimum = prim.objfunval
+    if minprim is None:
+        print("minimum prim is none, should not happen")
     return minprim
 
 def setBestPrimitive(signal):

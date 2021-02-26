@@ -38,10 +38,18 @@ class Node():
         robdeg, lsat = primitiveCheckSat(self.PTSLformula, self.signal)
         data_left = self.signal.data[lsat, :, :]
         data_right = self.signal.data[~lsat, :, :]
+        try:
+            if data_left.size == 0 or data_right.size == 0:
+                return None, None
+        except TypeError:
+            print("AAAAAAAAAAAAAAAAh")
+            print(data_left)
+            print(data_right)
+            raise Exception("Not Implemented")
         robdeg_left = np.amin(robdeg[lsat])
         robdeg_right = np.amin(robdeg[~lsat])
-        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict)
+        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.device)
         signal_left.robdeg = robdeg_left
-        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict)
+        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict, self.signal.device)
         signal_right.robdeg = robdeg_right
         return signal_left, signal_right

@@ -35,20 +35,19 @@ def partitionWeights(robdeg, labels, lblclass):
     p_Strue = np.sum(absrd_true)/np.sum(absrd)
     p_Sfalse = 1 - p_Strue
 
+    #we add a 0.00001 prior so that we would not take log 0
     numclass = np.shape(lblclass)[0]
-    p_true_list = [0.0001] * numclass #arbitray default value for when absrd_true is empty
+    p_true_list = [0.00001] * numclass #arbitray default value for when absrd_true is empty
     for i in range(numclass-1):
         Strue_c1 = (labels[Strue] == lblclass[i])
         if absrd_true.size > 0:
-            print(np.shape(Strue_c1))
-            print(np.shape(absrd))
-            p_true_list[i] = np.sum(absrd_true[Strue_c1])/np.sum(absrd_true)
-    p_true_list[numclass] = 1 - sum(p_true_list)
+            p_true_list[i] = max(0.00001, np.sum(absrd_true[Strue_c1])/np.sum(absrd_true))
+    p_true_list[numclass-1] = max(0.00001, 1.0 - sum(p_true_list))
 
     p_false_list = [0.0001] * numclass
     for i in range(numclass-1):
-        Strue_c1 = (labels[Sfalse] == lblclass[i])
+        Sfalse_c1 = (labels[Sfalse] == lblclass[i])
         if absrd_false.size > 0: 
-            p_false_list[i] = np.sum(absrd_false[Strue_c1])/np.sum(absrd_false)
-    p_false_list[numclass] = 1 - sum(p_true_list)
+            p_false_list[i] = max(0.00001, np.sum(absrd_false[Sfalse_c1])/np.sum(absrd_false))
+    p_false_list[numclass-1] = max(0.00001, 1.0 - sum(p_true_list))
     return (p_Strue, p_Sfalse, p_true_list, p_false_list)

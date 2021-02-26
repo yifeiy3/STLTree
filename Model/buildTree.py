@@ -14,11 +14,13 @@ def check_stop(tree):
     global frac_same
     global min_nobj
     if tree.currentDepth > max_depth:
+        print("Learning stopped by exceeding current depth limit")
         return True 
     if tree.nobj < min_nobj:
+        print("Learning stopped by going below minimum object")
         return True 
     if max(tree.fracClass) > frac_same:
-        print(max(tree.fracClass))
+        print("Learning stpped by exceeding accuracy threshold")
         return True
     return False 
 
@@ -28,12 +30,11 @@ def buildTree(signals, parent=None):
     '''
     T = Node(parent, signals)
     if check_stop(T):
-        print("WE GOT FUCKING HERE")
         return T
     PTSLformula = setBestPrimitive(signals)
     T.setPTSL(PTSLformula)
     signals_left, signals_right = T.partitionSignals() 
-    if not signals_left.data or not signals_right.data:
+    if not signals_left or not signals_right:
         #can't find a way to split data further
         print("Null Split!")
         return T 

@@ -39,6 +39,6 @@ def checkValidSLPrimitive(p, signal):
     max_t3 = 10 * min_sample_time
     if t1 < signal.time[0] or t1 > signal.time[-1] - t3 or t2 - t1 < min_sample_time\
         or t2 > signal.time[-1] - t3 or min_sample_time > t3 or t3 > min(max_t3, signal.time[-1]-t2):
-        print("Invalid SL interval, either too small or exceed time stamp unit")
+        #print("Invalid SL interval, either too small or exceed time stamp unit")
         return False 
     return True 

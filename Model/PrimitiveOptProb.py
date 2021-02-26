@@ -14,9 +14,9 @@ class FLPrimitiveProblem(Annealer):
             primitive object with all parameters being Nan
         '''
         initialstate = pinit.param
+        lb = np.amin(spacebounds[:, 0])
+        ub = np.amax(spacebounds[:, 1])
         if any([math.isnan(x) for x in initialstate]):
-            lb = np.amin(spacebounds[:, 0])
-            ub = np.amax(spacebounds[:, 1])
             initialstate[0] = timebounds[0] #beginning of timestamp
             initialstate[1] = timebounds[1] #end
             #TODO: see if this would be impacted by our 0-1 discrete variables.
@@ -30,8 +30,8 @@ class FLPrimitiveProblem(Annealer):
 
     def move(self):
         #defines how our algorithm randomly moves.
-        l = random.randrange(self.timelb, self.timeub, self.signal.minintval)
-        r = random.randrange(l, self.timeub, self.signal.minintval)
+        l = random.randrange(self.timelb, self.timeub-1, self.signal.minintval)
+        r = random.randrange(l+1, self.timeub, self.signal.minintval)
         c = random.randint(self.lb, self.ub)
         self.state.modifyparam([l, r, c])
 
@@ -66,8 +66,8 @@ class SLPrimitiveProblem(Annealer):
         self.timeub = timebounds[1]
 
     def move(self):
-        l = random.randrange(self.timelb, self.timeub, self.signal.minintval)
-        r = random.randrange(l, self.timeub, self.signal.minintval)
+        l = random.randrange(self.timelb, self.timeub-1, self.signal.minintval)
+        r = random.randrange(l+1, self.timeub, self.signal.minintval)
         t3 = random.randrange(self.signal.minintval, 10*self.signal.minintval, self.signal.minintval)
         c = random.randint(self.lb, self.ub)
         self.state.modifyparam([l, r, t3, c])

@@ -9,6 +9,8 @@ def computeRobustness(p, signal):
         p: primitive
         signal: dataset
     '''
+    if p is None:
+        raise Exception("No prmitive given")
     if p.oper == 'G':
         return fl_G(p, signal)
     elif p.oper == 'F':
@@ -25,7 +27,12 @@ def fl_G(p, signal):
     dim_idx = p.dim 
     ineq_dir = p.ineq
 
-    tau1, tau2, c = (p.param[0], p.param[1], p.param[2])
+    try:
+        tau1, tau2, c = (p.param[0], p.param[1], p.param[2])
+    except TypeError:
+        print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+        print(p.param)
+        raise Exception("Not Implemented")
     #TODO: currently the model is treating each measure of the signal is of equal time interval,
     #might need to change this in the future for real data.
     t1, t2 = (signal.time[0], signal.time[1])
@@ -74,13 +81,14 @@ def sl_FG(p, signal):
     if ineq_dir == '<':
         for i in range(Nobj):
             a = signal.data[i, intv_start: intv_end, dim_idx]
-            robustdeg[i] = computeMinMaxFilt(a, window_len)
+            robustdeg[i] = c - computeMinMaxFilt(a, window_len)
     elif ineq_dir == '>':
         for i in range(Nobj):
             a = signal.data[i, intv_start: intv_end, dim_idx]
-            robustdeg[i] = computeMaxMinFilt(a, window_len)        
+            robustdeg[i] = c - computeMaxMinFilt(a, window_len)        
     else:
         raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir))        
+    return robustdeg
 
 def sl_GF(p, signal):
     ineq_dir = p.ineq
