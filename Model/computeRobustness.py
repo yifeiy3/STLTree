@@ -27,12 +27,7 @@ def fl_G(p, signal):
     dim_idx = p.dim 
     ineq_dir = p.ineq
 
-    try:
-        tau1, tau2, c = (p.param[0], p.param[1], p.param[2])
-    except TypeError:
-        print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-        print(p.param)
-        raise Exception("Not Implemented")
+    tau1, tau2, c = (p.param[0], p.param[1], p.param[2])
     #TODO: currently the model is treating each measure of the signal is of equal time interval,
     #might need to change this in the future for real data.
     t1, t2 = (signal.time[0], signal.time[1])

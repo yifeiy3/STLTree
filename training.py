@@ -14,7 +14,7 @@ print(alldevices)
 training_set = trainingset(ar, alldevices) #a list of signals for training from our dataset
 
 learnedTrees = [] #list of learned decision trees
-for signals in training_set:
+for signals in training_set[1:]:
     T = buildTree(signals)
     learnedTrees.append(T)
     labeldevice = alldevices[signals.labelidx - 1]
@@ -24,6 +24,7 @@ for signals in training_set:
         out.write("LabelClass: {0}\n".format(labeldevice))
         treetxt = TreeToString(T, lbldict, signals.device)
         out.write(treetxt)
+    break
 
 
 
