@@ -1,0 +1,19 @@
+The environment used to generate our data
+
+Devices: Thermostat, type: digits, possible state: [65 - 90]
+         Smoke Alarm, type: string, possible state: [off, siren]
+         Light A,   type: string, possible state: [on, off] 
+         Light B,   type: string, possible state: [on, off]
+         Door,      type: string, possible state: [open, locked]
+         Person,    type: string, possible state: [home, away]
+
+Rules: Thermostat > 85 for 5 seconds ----> Smoke alarm siren
+       Thermostat < 85 -----> Smoke alarm off 
+       Light A off --------> Light B on after 5 seconds
+       Person away --------> Light B on 
+       Person away --------> Door locked after 2 seconds
+       Smoke Alarm siren, Person home -------> Door open 
+
+Smoke Alarm can not change state otherwise
+Person randomly enter, leave house, open door, and turn Lights on/off 
+Thermostat randomly change temperature (+- 1 every second)

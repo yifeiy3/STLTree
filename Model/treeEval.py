@@ -2,7 +2,7 @@ from .PrimitiveCheckSat import primitiveCheckSat
 from .treeStruct import Node 
 import numpy as np
 
-def eval(T, signal):
+def teval(T, signal):
     '''
         evaluate our signal by our learned Tree to check whether for anomalies
         @T: our learned tree
@@ -20,6 +20,6 @@ def eval(T, signal):
     prim = T.PTSLformula 
     _, lsat = primitiveCheckSat(prim, signal)
     if np.sum(lsat) == 1: 
-        return eval(T.leftchild, signal)
+        return teval(T.leftchild, signal)
     else:
-        return eval(T.rightchild, signal)
+        return teval(T.rightchild, signal)

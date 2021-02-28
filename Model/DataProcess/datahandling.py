@@ -83,8 +83,9 @@ def construct_trainingset(data_by_intervals, classdict, alldevices):
     return training_signals
     
 
-def trainingset(dataset, alldevices, interval = 30, offset = 5):
+def trainingset(dataset, alldevices, interval = 10, offset = 2):
     data_by_intervals = separate_by_intervals(dataset, interval, offset)
     ds, classdict = construct_classdict(data_by_intervals, alldevices)
+    print(classdict)
     res = construct_trainingset(ds, classdict, alldevices)
     return res

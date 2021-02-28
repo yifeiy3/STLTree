@@ -19,10 +19,10 @@ def primInit(num_signal_dim):
         primitives.append(FLPrimitives('G', dim_idx, '>', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, '<', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, '>', flparam, math.inf))
-        primitives.append(FLPrimitives('GF', dim_idx, '<', slparam, math.inf))
-        primitives.append(FLPrimitives('GF', dim_idx, '>', slparam, math.inf))
-        primitives.append(FLPrimitives('FG', dim_idx, '<', slparam, math.inf))
-        primitives.append(FLPrimitives('FG', dim_idx, '>', slparam, math.inf))
+        primitives.append(SLPrimitives('GF', dim_idx, '<', slparam, math.inf))
+        primitives.append(SLPrimitives('GF', dim_idx, '>', slparam, math.inf))
+        primitives.append(SLPrimitives('FG', dim_idx, '<', slparam, math.inf))
+        primitives.append(SLPrimitives('FG', dim_idx, '>', slparam, math.inf))
     
     return primitives
     
