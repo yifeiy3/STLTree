@@ -28,7 +28,7 @@ for signals in training_set:
         treetxt = TreeToString(T, lbldict, signals.device)
         out.write(treetxt)
     
-    with open(tree_model_file, "w") as outmodel:
+    with open(tree_model_file, "wb") as outmodel:
         pickle.dump(T, outmodel, pickle.HIGHEST_PROTOCOL)
 
 

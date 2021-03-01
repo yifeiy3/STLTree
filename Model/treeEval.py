@@ -9,6 +9,8 @@ def teval(T, signal):
         @signal: the signal data to be evaluated
         return the class by our learned tree
     '''
+    if T.PTSLformula is None: #all the data is of one class
+        return T.predclass
     if T.leftchild is None: #should be a leaf
         if T.rightchild:
             print("Null split 1, this should not happen")

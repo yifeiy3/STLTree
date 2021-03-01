@@ -1,6 +1,7 @@
 **/deviceInfos
 try.py
 **/LearnedModel
+**/EvalReport
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

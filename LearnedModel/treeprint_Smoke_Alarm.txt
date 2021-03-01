@@ -1,7 +1,7 @@
 LabelClass: Smoke_Alarm
 Node id: 0 
              Parent id -1 
-             PTSL formula: F: [0, 1] G: [0, 4] (Light A < 1) 
+             PTSL formula: G: [3, 5] (Light A < 1) 
              Number of objects 750 
              Predicted Class 0 
              Prediction Error 0.1333333333333333 
