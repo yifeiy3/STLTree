@@ -38,8 +38,12 @@ class Node():
         robdeg, lsat = primitiveCheckSat(self.PTSLformula, self.signal)
         data_left = self.signal.data[lsat, :, :]
         data_right = self.signal.data[~lsat, :, :]
-        if data_left.size == 0 or data_right.size == 0:
+        if data_left.size == 0:
+            if data_right.size > 0:
+                return None, data_right
             return None, None
+        if data_right.size == 0:
+            return data_left, None 
         robdeg_left = np.amin(robdeg[lsat])
         robdeg_right = np.amin(robdeg[~lsat])
         label_left = self.signal.label[lsat]

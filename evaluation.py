@@ -32,7 +32,7 @@ def reverse_classdict(signal, index):
     return data
 
 
-for signals in eval_set[2:]:
+for signals in eval_set:
     labeldevice = alldevices[signals.labelidx - 1]
     T = None 
     count = 0 #number of unmatched predictions, anomalies
@@ -66,7 +66,6 @@ for signals in eval_set[2:]:
                     outfile.write(s)
             outfile.write("total discrepancies: {0}\n".format(count))
             outfile.write("Discrepancy percentage: {0}\n".format(count/np.shape(signals.data)[0]))
-            break
     else:
         print('File exists but model not found for device: {0}').format(labeldevice)
         continue

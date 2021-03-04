@@ -16,7 +16,7 @@ print(alldevices)
 training_set = trainingset(ar, alldevices, interval=10, offset=2) #a list of signals for training from our dataset
 
 learnedTrees = [] #list of learned decision trees
-for signals in training_set[2:]:
+for signals in training_set:
     T = buildTree(signals)
     learnedTrees.append(T)
     labeldevice = alldevices[signals.labelidx - 1]
@@ -30,7 +30,7 @@ for signals in training_set[2:]:
     
     with open(tree_model_file, "wb") as outmodel:
         pickle.dump(T, outmodel, pickle.HIGHEST_PROTOCOL)
-    break
+
 
 
 

@@ -2,11 +2,12 @@ from .treeStruct import Node
 from .Prim import FLPrimitives, SLPrimitives, Primitives
 nodeid = 0
 
-def NodeToString(node, lbldict, parentid, devicenames=None):
+def NodeToString(node, lbldict, parentid, nodebranch, devicenames=None):
     '''
         @param: node, the subtree
         @param: dictionary corresponding to the label, i.e. classdict[label]
         @param: list of devices that maps to the primitive's dimension index
+        @param: nodebranch: left child or right child, the root by default is left child.
     '''
     global nodeid
     ptsl = node.PTSLformula
@@ -20,14 +21,16 @@ def NodeToString(node, lbldict, parentid, devicenames=None):
     else:
         ptsl_str = ptsl.toString(devicenames)
         s = "Node id: {0} \n \
-            Parent id {1} \n \
-            PTSL formula: {2} \n \
-            Number of objects {3} \n \
-            Predicted Class {4} \n \
-            Prediction Error {5} \n \
-            Actual Predicted State {6}\n\n".format(
-                nodeid,
+            Parent id: {1} \n \
+            Node branch: {2} \n \
+            PTSL formula: {3} \n \
+            Number of objects: {4} \n \
+            Predicted Class: {5} \n \
+            Prediction Error: {6} \n \
+            Actual Predicted State: {7}\n\n".format(
+                node.nodeid,
                 parentid,
+                nodebranch,
                 ptsl_str,
                 node.nobj,
                 node.predClass,
@@ -40,18 +43,20 @@ def TreeToString(node, lbldict, devicenames=None):
     '''
         convert our learned tree to a readable format
     '''
-    queue = [(node, -1)] #(node, parentid)
+    global nodeid 
+    nodeid = 0 #reset node id for each tree
+    queue = [(node, -1, 'left')] #(node, parentid)
     currentDepth = 1
     s = ''
     while queue:
-        tnode, pid = queue.pop(0) #pop from front
+        tnode, pid, branch = queue.pop(0) #pop from front
         if tnode.currentDepth > currentDepth:
             currentDepth += 1
             s += '_________________________________________________\n'
-        s += NodeToString(tnode, lbldict, pid, devicenames)
+        s += NodeToString(tnode, lbldict, pid, branch, devicenames)
         if tnode.leftchild:
-            queue.append((tnode.leftchild, tnode.nodeid))
+            queue.append((tnode.leftchild, tnode.nodeid, 'left'))
         if tnode.rightchild:
-            queue.append((tnode.rightchild, tnode.nodeid))
+            queue.append((tnode.rightchild, tnode.nodeid, 'right'))
     return s 
 

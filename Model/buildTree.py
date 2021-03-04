@@ -37,7 +37,15 @@ def buildTree(signals, parent=None):
     if not signals_left or not signals_right:
         #can't find a way to split data further
         print("Null Split!")
-        return T 
+        if signals_left:
+            T.leftchild = Node(signals_left, T)
+            return T 
+        elif signals_right:
+            T.rightchild = Node(signals_right, T)
+            return T
+        else:
+            print("really can't split further")
+            return T 
     
     T.leftchild = buildTree(signals_left, T)
     T.rightchild = buildTree(signals_right, T)
