@@ -13,7 +13,7 @@ def check_stop(tree):
     global max_depth
     global frac_same
     global min_nobj
-    if tree.currentDepth > max_depth:
+    if tree.currentDepth >= max_depth:
         print("Learning stopped by exceeding current depth limit")
         return True 
     if tree.nobj < min_nobj:
@@ -29,10 +29,10 @@ def buildTree(signals, parent=None):
         build our decision tree
     '''
     T = Node(parent, signals)
-    if check_stop(T):
-        return T
     PTSLformula = setBestPrimitive(signals)
     T.setPTSL(PTSLformula)
+    if check_stop(T):
+        return T
     signals_left, signals_right = T.partitionSignals() 
     if not signals_left or not signals_right:
         #can't find a way to split data further

@@ -26,13 +26,13 @@ def IG_cost(Strue, Sfalse, true_list, false_list):
     return Strue * H_Strue + Sfalse * H_SFalse
 
 def partitionWeights(robdeg, labels, lblclass):
-    Strue = robdeg >= 0
-    Sfalse = robdeg < 0
+    Strue = robdeg > 0
+    Sfalse = robdeg <= 0
     absrd = np.abs(robdeg)
     absrd_true = absrd[Strue]
     absrd_false = absrd[Sfalse]
 
-    p_Strue = np.sum(absrd_true)/np.sum(absrd)
+    p_Strue = np.sum(absrd_true)/np.sum(absrd) if np.sum(absrd) > 0.00001 else 0
     p_Sfalse = 1 - p_Strue
 
     #we add a 0.00001 prior so that we would not take log 0

@@ -42,8 +42,10 @@ class Node():
             return None, None
         robdeg_left = np.amin(robdeg[lsat])
         robdeg_right = np.amin(robdeg[~lsat])
-        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.device)
+        label_left = self.signal.label[lsat]
+        label_right = self.signal.label[~lsat]
+        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.device, label_left)
         signal_left.robdeg = robdeg_left
-        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict, self.signal.device)
+        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict, self.signal.device, label_right)
         signal_right.robdeg = robdeg_right
         return signal_left, signal_right

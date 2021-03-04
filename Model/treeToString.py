@@ -11,6 +11,7 @@ def NodeToString(node, lbldict, parentid, devicenames=None):
     global nodeid
     ptsl = node.PTSLformula
     node.nodeid = nodeid
+    nodeid += 1
     if not ptsl:
         ptsl_str = 'Not enough data, the device is always in state: {0}'.format(
             lbldict[node.predClass]

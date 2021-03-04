@@ -32,7 +32,7 @@ def reverse_classdict(signal, index):
     return data
 
 
-for signals in eval_set:
+for signals in eval_set[2:]:
     labeldevice = alldevices[signals.labelidx - 1]
     T = None 
     count = 0 #number of unmatched predictions, anomalies
@@ -46,8 +46,9 @@ for signals in eval_set:
         with open("EvalReport/{0}_report.txt".format(labeldevice), "w") as outfile:
             for i in range(np.shape(signals.data)[0]):
                 data = signals.data[i, :, :]
-                tpred = teval(T, data)
-                t_gt = signals.label[i]
+                single_sig = Signal(data[np.newaxis, :, :], signals.labelidx, signals.classdict, signals.device, signals.label)
+                tpred = teval(T, single_sig)
+                t_gt = single_sig.label[i]
                 if tpred != t_gt:
                     count = count + 1
                     tpred_str = signals.classdict[labeldevice][tpred]
@@ -64,7 +65,8 @@ for signals in eval_set:
                         )
                     outfile.write(s)
             outfile.write("total discrepancies: {0}\n".format(count))
-            outfile.write("Discrepancy percentage: {1}\n".format(count/np.shape(signals.data)[0]))
+            outfile.write("Discrepancy percentage: {0}\n".format(count/np.shape(signals.data)[0]))
+            break
     else:
         print('File exists but model not found for device: {0}').format(labeldevice)
         continue

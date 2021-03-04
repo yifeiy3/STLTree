@@ -118,7 +118,7 @@ def EventHandle():
             sta_tbl += [de.state]
         Event.showState(sta_tbl)  
     df = pd.DataFrame(Event.state_tbl,columns=['Thermostat','Smoke_Alarm','Light A','Light B','Door','Person'])
-    df.to_csv("../Models/event.csv")
+    df.to_csv("event.csv")
             
             
 class Timer:
@@ -196,7 +196,12 @@ class Thermostat(device):
         return False
     
     def setEvent(self,event):
-        tempchg = [-1,0,1]
+        if self.state > 105:
+            tempchg = [-1,0]
+        elif self.state < 25:
+            tempchg = [0, 1]
+        else:
+            tempchg = [-1, 0, 1]
         t = random.choice(tempchg)
         self.state += t
         #print(self.state)

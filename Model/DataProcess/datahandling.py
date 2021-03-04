@@ -19,11 +19,12 @@ def separate_by_intervals(dataset, interval, offset):
             end = j + interval
             if end >= num_rows - 1:
                 diff = end - num_rows + 1
-                ds = (dataset[i, j - diff:num_rows, :])
+                ds = (dataset[i, j - diff + 1:num_rows, :])
                 ds = ds[np.newaxis, :, :]
                 ds_list.append(ds)
+                break #we reached the end
             else:
-                ds = (dataset[i, j-1: end, :])
+                ds = (dataset[i, j: end, :])
                 ds = ds[np.newaxis, :, :]
                 ds_list.append(ds)
     return np.concatenate(ds_list)
@@ -47,11 +48,11 @@ def construct_classdict(dataset, devices):
         if checkint(dataset[0, 1, i+1]):
             #convert each to int
             for k1 in range(np.shape(dataset)[0]):
-                for k2 in range(1, np.shape(dataset)[1]):
+                for k2 in range(np.shape(dataset)[1]):
                     dataset[k1, k2, i+1] = int(dataset[k1, k2, i+1])
                     #our dataset should be converted into an array of generic items, so this should work
         else:
-            possibleStates = np.unique(dataset[:, 1:, i+1])
+            possibleStates = np.unique(dataset[:, :, i+1])
             itemdict = {} #maps individual item's state to each integer we converts
             statedict = {} #map each integer to the state it is representing.
             for k3 in range(np.shape(possibleStates)[0]):
@@ -59,7 +60,7 @@ def construct_classdict(dataset, devices):
                 statedict[k3] = possibleStates[k3]
             classdict[devices[i]] = statedict
             for k1 in range(np.shape(dataset)[0]):
-                for k2 in range(1, np.shape(dataset)[1]):
+                for k2 in range(np.shape(dataset)[1]):
                     dataset[k1, k2, i+1] = itemdict[dataset[k1, k2, i+1]]
     return dataset, classdict
 
@@ -79,7 +80,12 @@ def construct_trainingset(data_by_intervals, classdict, alldevices):
         #not a continuous value, we can train tree with this as label
         if alldevices[i] in classdict:
             copy_alldevice = copy.copy(alldevices) #need to create a copy since we removing columns
-            training_signals.append(Signal(data_by_intervals, i+1, classdict, copy_alldevice))
+            copy_alldevice.pop(i) #pop out the label column
+            datacols = list(range(1, numcols)) #0th column is for timestamps
+            datacols.pop(i)
+            labelcol = data_by_intervals[:, -1, i+1]
+            data_for_signal = data_by_intervals[:, :, datacols]
+            training_signals.append(Signal(data_for_signal, i+1, classdict, copy_alldevice, labelcol))
     return training_signals
     
 

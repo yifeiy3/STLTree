@@ -9,21 +9,20 @@ class Signal():
         dim 3: devices
         @param: classdict: since we representing the state of device with integer,
             have a dictionary to convert it back for readable rules.
-        @param: alldevices: list of all possible devices in the state
+        @param: alldevices: list of all possible devices in the state, except the label
     '''
-    def __init__(self, dataframe, labelidx, classdict, alldevices):
-        numcol = np.shape(dataframe)[2]
-        datacols = list(range(1, numcol)) #0th column is for timestamps
-        datacols.pop(labelidx-1)
+    def __init__(self, dataframe, labelidx, classdict, alldevices, labelcol):
+        # numcol = np.shape(dataframe)[2]
+        # datacols = list(range(1, numcol)) #0th column is for timestamps
+        # datacols.pop(labelidx-1)
         self.labelidx = labelidx
-        self.time = dataframe[0, 1:, 0] #a list of all the time stamps
-        #since time is relative, WLOG we use the time interval by first sample.
-        alldevices.pop(labelidx-1) #i-1th entry represents the ith column.
+        self.time = np.arange(0, np.shape(dataframe)[1]) #a list of all the time stamps
+        #since time is relative, WLOG we use the time interval by first sample.        
         self.device = alldevices #a list of all the devices
-        self.data = dataframe[:, 1 :, datacols]
+        self.data = dataframe
         self.robdeg = np.full((np.shape(dataframe)[0],), np.inf) 
         #the robust degree we use as objfunc for learning tree
-        self.label = dataframe[:, -1, labelidx] #leftmost col is timestamp, 
+        self.label = labelcol #leftmost col is timestamp, 
         #right now using the last state of the time interval for our label device in data.
         self.lblclass = np.unique(self.label)
         self.minintval = self.time[1] - self.time[0] #currently assuming equal size intval
@@ -33,4 +32,4 @@ class Signal():
         '''
             get the data for the states of jth device in the data
         '''
-        return self.data[:, 1:, idx]
+        return self.data[:, :, idx]

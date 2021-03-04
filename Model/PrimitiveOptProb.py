@@ -27,13 +27,19 @@ class FLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
+        self.Tmax = 1000.0
 
     def move(self):
         #defines how our algorithm randomly moves.
-        l = random.randrange(self.timelb, self.timeub-1, self.signal.minintval)
-        r = random.randrange(l+1, self.timeub, self.signal.minintval)
-        c = random.randint(self.lb, self.ub)
-        self.state.modifyparam([l, r, c])
+        try:
+            l = random.randrange(self.timelb, self.timeub, self.signal.minintval)
+            r = random.randrange(l+1, self.timeub+1, self.signal.minintval)
+            c = random.randint(self.lb, self.ub)
+            self.state.modifyparam([l, r, c])
+        except ValueError:
+            print("our data currently looks like this: {0}".format(self.signal.data))
+            print("time bound is this: \n {0}".format(self.signal.time))
+            raise NotImplementedError
 
     def energy(self):
         #note: state is our current primitive, computes the objective function
@@ -64,13 +70,19 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
+        self.Tmax = 1000.0
 
     def move(self):
-        l = random.randrange(self.timelb, self.timeub-1, self.signal.minintval)
-        r = random.randrange(l+1, self.timeub, self.signal.minintval)
-        t3 = random.randrange(self.signal.minintval, 10*self.signal.minintval, self.signal.minintval)
-        c = random.randint(self.lb, self.ub)
-        self.state.modifyparam([l, r, t3, c])
+        try:
+            l = random.randrange(self.timelb, self.timeub, self.signal.minintval)
+            r = random.randrange(l+1, self.timeub+1, self.signal.minintval)
+            t3 = random.randrange(self.signal.minintval, 10*self.signal.minintval, self.signal.minintval)
+            c = random.randint(self.lb, self.ub)
+            self.state.modifyparam([l, r, t3, c])
+        except ValueError:
+            print("our data currently looks like this: {0}".format(self.signal.data))
+            print("time bound is this: \n {0}".format(self.signal.time))
+            raise NotImplementedError
 
     def energy(self):
         return InfoGain(self.state, self.signal)

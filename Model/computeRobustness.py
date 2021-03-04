@@ -32,8 +32,8 @@ def fl_G(p, signal):
     #might need to change this in the future for real data.
     t1, t2 = (signal.time[0], signal.time[1])
     t_intval = t2 - t1
-    intv_start = math.floor((tau1 - t1) // t_intval) + 1
-    intv_end = math.floor((tau2 - t1) // t_intval) + 1
+    intv_start = math.floor((tau1 - t1) / t_intval)
+    intv_end = math.floor((tau2 - t1) / t_intval) + 1
 
     robustdeg = np.zeros((Nobj, ))
     if ineq_dir == '<':
@@ -68,8 +68,8 @@ def sl_FG(p, signal):
     tau1, tau2, tau3, c = (p.param[0], p.param[1], p.param[2], p.param[3])
     t1, t2 = (signal.time[0], signal.time[1])
     t_intval = t2 - t1
-    intv_start = math.floor((tau1 - t1) // t_intval) + 1
-    intv_end = math.floor(max((tau2 + tau3 - t1) // t_intval + 1, np.shape(signal.time)[0]))
+    intv_start = math.floor((tau1 - t1) / t_intval)
+    intv_end = math.floor(max((tau2 + tau3 - t1) // t_intval+1, np.shape(signal.time)[0]))
     window_len = math.floor(tau3 // t_intval) + 1 #size of [0, tau3] window
 
     robustdeg = np.zeros((Nobj, ))

@@ -16,7 +16,7 @@ def checkValidFLPrimitive(p, signal):
     if math.isnan(t1) or math.isnan(t2):
         return False 
     if t1 >= t2:
-        print("Invalid FL interval, t1 appears before t2")
+        print("Invalid FL interval, t1 appears after t2")
         return False
     min_sample_time = signal.time[1] - signal.time[0]
     #currently assume evenly spaced time stamps, makes no sense to have an interval smaller than that
