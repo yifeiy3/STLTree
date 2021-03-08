@@ -14,8 +14,16 @@ def NodeToString(node, lbldict, parentid, nodebranch, devicenames=None):
     node.nodeid = nodeid
     nodeid += 1
     if not ptsl:
-        ptsl_str = 'Not enough data, the device is always in state: {0}'.format(
-            lbldict[node.predClass]
+        ptsl_str = 'Node id: {0} \n \
+                    Parent id: {1} \n \
+                    Number of Objects {2} \n \
+                    Predicted Class: {3} \n \
+                    Prediction Error: {4} \n'.format(
+            node.nodeid,
+            parentid,
+            node.nobj,
+            lbldict[node.predClass],
+            node.predError
         )
         return ptsl_str
     else:

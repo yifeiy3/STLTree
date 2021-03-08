@@ -1,6 +1,7 @@
 from .DataProcess.signalProcess import Signal 
 import numpy as np 
 from .PrimitiveCheckSat import primitiveCheckSat
+import math 
 
 class Node():
     def __init__(self, parent, signals):
@@ -25,7 +26,9 @@ class Node():
         self.predClass = self.fracClass.index(max(self.fracClass)) if self.fracClass \
                         else 0 #no signal, give arbitrary class
         self.predError = sum(self.fracClass) - max(self.fracClass) if self.fracClass \
-                        else 0
+                        else 0.0
+        self.effectivealpha = math.inf #effective alpha of the node used for pruning
+        #default inifinity so we won't prune leaves.
     
     def setPTSL(self, PTSLformula):
         self.PTSLformula = PTSLformula
@@ -38,18 +41,22 @@ class Node():
         robdeg, lsat = primitiveCheckSat(self.PTSLformula, self.signal)
         data_left = self.signal.data[lsat, :, :]
         data_right = self.signal.data[~lsat, :, :]
-        if data_left.size == 0:
-            if data_right.size > 0:
-                return None, data_right
+        if data_left.size <= 0 or data_right.size <=0:
             return None, None
-        if data_right.size == 0:
-            return data_left, None 
         robdeg_left = np.amin(robdeg[lsat])
         robdeg_right = np.amin(robdeg[~lsat])
         label_left = self.signal.label[lsat]
         label_right = self.signal.label[~lsat]
-        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.device, label_left)
+        signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.alldevices, label_left)
         signal_left.robdeg = robdeg_left
-        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict, self.signal.device, label_right)
+        signal_right = Signal(data_right, self.signal.labelidx, self.signal.classdict, self.signal.alldevices, label_right)
         signal_right.robdeg = robdeg_right
         return signal_left, signal_right
+
+    def chopleaf(self):
+        '''
+            chop unnecessary splits of the tree to avoid overfitting
+        '''
+        self.leftchild = None 
+        self.rightchild = None 
+        self.PTSLformula = None 

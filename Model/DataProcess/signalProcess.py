@@ -1,4 +1,5 @@
 import numpy as np 
+import copy 
 
 class Signal():
     '''
@@ -17,17 +18,20 @@ class Signal():
         # datacols.pop(labelidx-1)
         self.labelidx = labelidx
         self.time = np.arange(0, np.shape(dataframe)[1]) #a list of all the time stamps
-        #since time is relative, WLOG we use the time interval by first sample.        
-        self.device = alldevices #a list of all the devices
+        #since time is relative, WLOG we use the time interval by first sample.  
+        copy_alldevice = copy.copy(alldevices) #need to create a copy since we removing columns
+        copy_alldevice.pop(labelidx-1) #pop out the label column      
+        self.device = copy_alldevice #a list of all the devices
+        self.alldevices = alldevices
         self.data = dataframe
         self.robdeg = np.full((np.shape(dataframe)[0],), np.inf) 
         #the robust degree we use as objfunc for learning tree
         self.label = labelcol #leftmost col is timestamp, 
         #right now using the last state of the time interval for our label device in data.
-        self.lblclass = np.unique(self.label)
         self.minintval = self.time[1] - self.time[0] #currently assuming equal size intval
         self.classdict = classdict
-        
+        self.lblclass = list(classdict[alldevices[labelidx-1]].keys()) #all possible states of the device
+
     def getDimJ(self, idx):
         '''
             get the data for the states of jth device in the data

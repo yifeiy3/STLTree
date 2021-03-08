@@ -27,8 +27,10 @@ class FLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        self.Tmax = 8000.0
-        self.steps = 10000
+        # self.Tmax = 8000.0
+        # self.steps = 10000
+        self.Tmax = 800.0
+        self.steps = 100
 
     def move(self):
         #defines how our algorithm randomly moves.
@@ -71,7 +73,10 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        self.Tmax = 8000.0
+        # self.Tmax = 8000.0
+        # self.steps = 10000
+        self.Tmax = 800.0
+        self.steps = 100
 
     def move(self):
         try:

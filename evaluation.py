@@ -11,7 +11,7 @@ ar = signal_data.to_numpy()
 ar = ar[np.newaxis, :, :]
 alldevices = ar[0, 0, 1:].tolist()
 print(alldevices)
-eval_set = trainingset(ar, alldevices)
+eval_set = trainingset(ar, alldevices, interval=10, offset=2) #need to be consistent with training
 
 def reverse_classdict(signal, index):
     '''

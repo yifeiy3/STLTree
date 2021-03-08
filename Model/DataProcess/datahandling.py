@@ -79,13 +79,11 @@ def construct_trainingset(data_by_intervals, classdict, alldevices):
     for i in range(numcols-1):
         #not a continuous value, we can train tree with this as label
         if alldevices[i] in classdict:
-            copy_alldevice = copy.copy(alldevices) #need to create a copy since we removing columns
-            copy_alldevice.pop(i) #pop out the label column
             datacols = list(range(1, numcols)) #0th column is for timestamps
             datacols.pop(i)
             labelcol = data_by_intervals[:, -1, i+1]
             data_for_signal = data_by_intervals[:, :, datacols]
-            training_signals.append(Signal(data_for_signal, i+1, classdict, copy_alldevice, labelcol))
+            training_signals.append(Signal(data_for_signal, i+1, classdict, alldevices, labelcol))
     return training_signals
     
 

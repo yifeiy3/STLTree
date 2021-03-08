@@ -2,7 +2,7 @@ from .setPrim import setBestPrimitive
 from .treeStruct import Node 
 import numpy as np 
 
-max_depth = 5 #maximum depth of the tree
+max_depth = 10 #maximum depth of the tree
 frac_same = 0.99 #once we reach 99% accuracy of the class, we stop splitting that branch
 min_nobj = 2 #min number of signals in the class to continue recursion
 
@@ -29,23 +29,15 @@ def buildTree(signals, parent=None):
         build our decision tree
     '''
     T = Node(parent, signals)
-    PTSLformula = setBestPrimitive(signals)
-    T.setPTSL(PTSLformula)
     if check_stop(T):
         return T
+    PTSLformula = setBestPrimitive(signals)
+    T.setPTSL(PTSLformula)
     signals_left, signals_right = T.partitionSignals() 
     if not signals_left or not signals_right:
         #can't find a way to split data further
         print("Null Split!")
-        if signals_left:
-            T.leftchild = Node(signals_left, T)
-            return T 
-        elif signals_right:
-            T.rightchild = Node(signals_right, T)
-            return T
-        else:
-            print("really can't split further")
-            return T 
+        return T 
     
     T.leftchild = buildTree(signals_left, T)
     T.rightchild = buildTree(signals_right, T)

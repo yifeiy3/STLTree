@@ -36,7 +36,7 @@ def partitionWeights(robdeg, labels, lblclass):
     p_Sfalse = 1 - p_Strue
 
     #we add a 0.00001 prior so that we would not take log 0
-    numclass = np.shape(lblclass)[0]
+    numclass = len(lblclass)
     p_true_list = [0.00001] * numclass #arbitray default value for when absrd_true is empty
     for i in range(numclass-1):
         Strue_c1 = (labels[Strue] == lblclass[i])
