@@ -37,7 +37,7 @@ for signals in eval_set:
     T = None 
     count = 0 #number of unmatched predictions, anomalies
     try: 
-        with open("LearnedModel/treemodel_{0}.pkl".format(labeldevice), 'rb') as inmodel:
+        with open("LearnedModel/treepostprunemodel/{0}.pkl".format(labeldevice), 'rb') as inmodel:
             T = pickle.load(inmodel)
     except FileNotFoundError:
         print("Unable to find model file for device :{0}".format(labeldevice))

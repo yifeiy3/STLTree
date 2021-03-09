@@ -14,6 +14,10 @@ To run training on the tree model, run:
 ```
 The data is separated into intervals with length sepcified by the function `trainingset` in the file
 
+To adjust the training speed, change the parameters `Tmax`, `steps`, for FLOptimization problem and 
+SLOptimization problem under `PrimitiveOptProb.py`. `steps` adjusts the number of iterations of learning 
+STL formula, and `Tmax` adjusts the probability of us moving to a new state.
+
 To run evaluation on the tree model, run:
 ```
   python3 evaluation.py

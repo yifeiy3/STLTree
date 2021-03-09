@@ -1,6 +1,6 @@
 The environment used to generate our data
 
-Devices: Thermostat, type: digits, possible state: [65 - 90]
+Devices: Thermostat, type: digits, possible state: [25 - 105]
          Smoke Alarm, type: string, possible state: [off, siren]
          Light A,   type: string, possible state: [on, off] 
          Light B,   type: string, possible state: [on, off]
