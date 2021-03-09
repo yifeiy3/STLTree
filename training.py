@@ -23,7 +23,7 @@ va = va[np.newaxis, :, :]
 validation_set = trainingset(va, alldevices, interval=10, offset=2) #consistent with training set
 
 learnedTrees = [] #list of learned decision trees
-for i in range(len(training_set)):
+for i in range(len(training_set)):  
     signals = training_set[i]
     T = buildTree(signals)
     learnedTrees.append(T)

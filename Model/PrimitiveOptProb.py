@@ -2,16 +2,18 @@ from simanneal import Annealer
 import math
 import numpy as np 
 from .IGobj import InfoGain
+from .IGobjnr import InfoGainNoRobustness
 import random 
 
 class FLPrimitiveProblem(Annealer):
     '''
         for first level primitive: G/F
     '''
-    def __init__(self, pinit, timebounds, spacebounds, signal):
+    def __init__(self, pinit, timebounds, spacebounds, signal, userobustness=False):
         '''
             @param pinit: initial state of the primitive, when passed in should be an
             primitive object with all parameters being Nan
+            @param userobustness: whether we use robustness measure in our objective function
         '''
         initialstate = pinit.param
         lb = np.amin(spacebounds[:, 0])
@@ -31,6 +33,7 @@ class FLPrimitiveProblem(Annealer):
         # self.steps = 10000
         self.Tmax = 800.0
         self.steps = 100
+        self.userobustness = userobustness
 
     def move(self):
         #defines how our algorithm randomly moves.
@@ -46,14 +49,17 @@ class FLPrimitiveProblem(Annealer):
 
     def energy(self):
         #note: state is our current primitive, computes the objective function
-        return InfoGain(self.state, self.signal)
+        if self.userobustness:
+            return InfoGain(self.state, self.signal)
+        else:
+            return InfoGainNoRobustness(self.state, self.signal)
 
 
 class SLPrimitiveProblem(Annealer):
     '''
         for second level primitive: GF/FG
     '''
-    def __init__(self, pinit, timebounds, spacebounds, signal):
+    def __init__(self, pinit, timebounds, spacebounds, signal, userobustness=False):
         '''
             @param pinit: initial state of the primitive, when passed in should be an
             primitive object with all parameters being Nan
@@ -77,6 +83,7 @@ class SLPrimitiveProblem(Annealer):
         # self.steps = 10000
         self.Tmax = 800.0
         self.steps = 100
+        self.userobustness = userobustness
 
     def move(self):
         try:
@@ -91,7 +98,11 @@ class SLPrimitiveProblem(Annealer):
             raise NotImplementedError
 
     def energy(self):
-        return InfoGain(self.state, self.signal)
+        if self.userobustness:
+            return InfoGain(self.state, self.signal)
+        else:
+            return InfoGainNoRobustness(self.state, self.signal)
+
 
 def primitiveOptimization(problem):
     '''

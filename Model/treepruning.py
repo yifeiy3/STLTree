@@ -109,7 +109,7 @@ def pruneTree(T, testdata):
        tnode.chopleaf()
        parentnodes.pop(idx)
        mcr = treeEvalPerformance(T, testdata)
-       if test_error > mcr:
+       if test_error >= mcr: #we want to remove as much as possible
            stopiteration = iteration
            test_error = mcr
        idx, tnode = find_prunable_node(parentnodes)
