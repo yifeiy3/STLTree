@@ -3,6 +3,8 @@ try.py
 **/LearnedModel
 **/EvalReport
 nohup.out
+Model/__pycache__/
+Model/DataProcess/__pycache__/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
