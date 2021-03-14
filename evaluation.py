@@ -2,7 +2,7 @@ import pandas as pd
 from Model.treeEval import teval
 
 from Model.DataProcess.signalProcess import Signal
-from Model.DataProcess.datahandling import trainingset
+from Model.DataProcess.datahandling import trainingset, evaluationset
 import numpy as np 
 import pickle
 
@@ -11,7 +11,14 @@ ar = signal_data.to_numpy()
 ar = ar[np.newaxis, :, :]
 alldevices = ar[0, 0, 1:].tolist()
 print(alldevices)
-eval_set = trainingset(ar, alldevices, interval=10, offset=2) #need to be consistent with training
+
+cdict = {}
+with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+    cdict = pickle.load(dictfile)
+if cdict is None:
+    raise Exception("Learned class dict not found.")
+
+eval_set = evaluationset(ar, alldevices, cdict, interval=10, offset=2) #need to be consistent with training
 
 def reverse_classdict(signal, index):
     '''
@@ -28,6 +35,8 @@ def reverse_classdict(signal, index):
             thedevice = devices[k2]
             if thedevice in cd:
                 term = data[k1, k2]
+                if term == -1:
+                    data[k1, k2] = "UNKNOWN"
                 data[k1, k2] = cd[thedevice][term]
     return data
 
@@ -46,7 +55,7 @@ for signals in eval_set:
         with open("EvalReport/{0}_report.txt".format(labeldevice), "w") as outfile:
             for i in range(np.shape(signals.data)[0]):
                 data = signals.data[i, :, :]
-                single_sig = Signal(data[np.newaxis, :, :], signals.labelidx, signals.classdict, signals.device, signals.label)
+                single_sig = Signal(data[np.newaxis, :, :], signals.labelidx, signals.classdict, signals.alldevices, signals.label)
                 tpred = teval(T, single_sig)
                 t_gt = single_sig.label[i]
                 if tpred != t_gt:

@@ -20,7 +20,12 @@ class Signal():
         self.time = np.arange(0, np.shape(dataframe)[1]) #a list of all the time stamps
         #since time is relative, WLOG we use the time interval by first sample.  
         copy_alldevice = copy.copy(alldevices) #need to create a copy since we removing columns
-        copy_alldevice.pop(labelidx-1) #pop out the label column      
+        try:
+            copy_alldevice.pop(labelidx-1) #pop out the label column 
+        except: 
+            print(labelidx-1)
+            print(copy_alldevice)  
+            raise NotImplementedError  
         self.device = copy_alldevice #a list of all the devices
         self.alldevices = alldevices
         self.data = dataframe

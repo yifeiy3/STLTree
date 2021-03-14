@@ -60,7 +60,6 @@ def prune_basic_tree(parentnodes, epsilon = 0.02):
                     print("we got here!")
                     nodes.chopleaf()
                     parentnodes.pop(i)
-                    print(nodes)
                     if not isleaf(nodes):
                         print("this should not happen")
                     update = True
@@ -81,7 +80,7 @@ def find_prunable_node(parentnodes):
     ea_tuple = [] #list of (effective alpha, Node)
     for nodes in parentnodes:
         ea_tuple.append(compute_alpha(nodes)) #give each node a effective alpha 
-    _least, thenode = min(ea_tuple)
+    _least, thenode = min(ea_tuple, key = lambda t: t[0])
     return parentnodes.index(thenode), thenode
 
 

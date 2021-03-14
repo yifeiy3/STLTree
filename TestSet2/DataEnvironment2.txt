@@ -1,0 +1,21 @@
+The environment used to generate our data:
+
+Devices: LightSensor, type: digits, possible state: [0 - 100]
+         LightA, type: string, possible state: [on, off]
+         LightB, type: string, possible state: [on, off]
+         Temperature, type: digits, possible state: [0 - 100]
+         AC, type: string, possible state: [on, off]
+         window, type: string, possible state: [open, closed]
+
+Rules:
+    LightSensor > 8 ---------> Light A off, Light B off 
+    LightSensor < 6, Temperature > 85 ---------> LightB on 
+    Temperature > 85 for 4 seconds, AC off ---------> window open 
+    AC on ---------> window closed after 2 seconds 
+    Temperature < 60 for 3 seconds ------------> window closed, AC on 
+
+Temperature randomly (+- 1 every second)
+LightSensor randomly (+- 1 every second)
+Light A, Light B can be randomly turned on 
+Window randomly open/closed
+AC randomly on/off 

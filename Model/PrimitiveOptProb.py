@@ -22,17 +22,17 @@ class FLPrimitiveProblem(Annealer):
             initialstate[0] = timebounds[0] #beginning of timestamp
             initialstate[1] = timebounds[1] #end
             #TODO: see if this would be impacted by our 0-1 discrete variables.
-            initialstate[2] = (lb + ub)/2 #"middle" of all possible vals for state
+            initialstate[2] = (lb + ub)//2 #"middle" of all possible vals for state
         super().__init__(pinit)
         self.signal = signal 
         self.lb = lb 
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        # self.Tmax = 8000.0
-        # self.steps = 10000
-        self.Tmax = 800.0
-        self.steps = 100
+        self.Tmax = 12000.0
+        self.steps = 18000
+        # self.Tmax = 800.0
+        # self.steps = 100
         self.userobustness = userobustness
 
     def move(self):
@@ -79,10 +79,10 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        # self.Tmax = 8000.0
-        # self.steps = 10000
-        self.Tmax = 800.0
-        self.steps = 100
+        self.Tmax = 12000.0
+        self.steps = 18000
+        # self.Tmax = 800.0
+        # self.steps = 100
         self.userobustness = userobustness
 
     def move(self):
