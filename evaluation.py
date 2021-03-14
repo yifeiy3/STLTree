@@ -6,7 +6,7 @@ from Model.DataProcess.datahandling import trainingset, evaluationset
 import numpy as np 
 import pickle
 
-signal_data = pd.read_csv("eval.csv", index_col=None, header=None)
+signal_data = pd.read_csv("TestSet2/eval.csv", index_col=None, header=None)
 ar = signal_data.to_numpy()
 ar = ar[np.newaxis, :, :]
 alldevices = ar[0, 0, 1:].tolist()

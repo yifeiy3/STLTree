@@ -11,7 +11,7 @@ import pandas as pd
 #event define
 Temp_Chg_H,ThermoGT85,LightA_OFF,LightA_ON,LightB_OFF,LightB_ON = 101,102,103,104,105,106
 AC_off, AC_on, Window_Open, Window_Closed, LightSensor_GT8 ,LightSensor_LT6, Temp_Chg_L, ThermoLT60 = 107,108,109,110,111,112,113,114
-Temp_Chg_N, LightSensor_H, LightSensor_L, LightSensor_N = 115,116,117,118
+Temp_Chg_N, LightSensor_H, LightSensor_L, LightSensor_N, ThermoNorm, LightNorm = 115,116,117,118, 119,120
 #state define 
 A_ON,A_OFF,B_ON,B_OFF,AC_ON,AC_OFF,W_OPEN,W_CLOSED = 201,202,203,204,205,206,207,208
 T_HIGH, T_LOW, T_NORM, L_HIGH, L_LOW, L_NORM = 209,210,211,212,213,214
@@ -19,7 +19,8 @@ event_table = [
    #(In_Event,      In_State,  Out_State, Out_Event,    time_delay) 
     (Temp_Chg_H,       None,   T_HIGH,      ThermoGT85,       0), #if temperture > 85, it sends event
     (Temp_Chg_L,       None,   T_LOW,       ThermoLT60,       0), #if temperture < 85, it sends event
-    (Temp_Chg_N,       None,   T_NORM,      None,             0),
+    (Temp_Chg_N,       None,   T_NORM,      ThermoNorm,       0),
+    (ThermoNorm,       T_NORM,   None,      None,             0),       #need a default normal event to change temp state.
     (ThermoGT85,       AC_OFF,   None,      Window_Open,      4),
     (ThermoLT60,       T_LOW,    None,      Window_Closed,    3),
     (ThermoLT60,       T_LOW,    None,      AC_on,            3),
@@ -29,20 +30,21 @@ event_table = [
     (LightB_ON,        B_OFF,    B_ON,      None,             0),
     (LightSensor_GT8,  L_HIGH,   None,     LightA_OFF,         0),
     (LightSensor_GT8,  L_HIGH,   None,     LightB_OFF,         0),
-    (LightSensor_LT6,  L_LOW,    None,      LightB_ON,         0),
+    (LightSensor_LT6,  T_HIGH,   L_LOW,      LightB_ON,         0),
     (AC_on,            AC_OFF,   AC_ON,     Window_Closed,     2),
     (AC_off,           AC_ON,    AC_OFF,     None,             0),
     (Window_Closed,    W_OPEN,   W_CLOSED,  None,              0),
     (Window_Open,      W_CLOSED, W_OPEN,    None,              0),
     (LightSensor_H,     None,     L_HIGH,    LightSensor_GT8,  0), 
     (LightSensor_L,    None,     L_LOW,      LightSensor_LT6,  0),
-    (LightSensor_N,    None,     L_NORM,     None,             0),
+    (LightSensor_N,    None,     L_NORM,     LightNorm,         0),
+    (LightNorm,       L_NORM,   None,      None,                0), 
 ]
 
 def genEvent():
     #devices [Thermostat, LightSensor, LightA, LightB, AC, Window]
     times = 0
-    while times < 200: #how many data points we are generating
+    while times < 10000: #how many data points we are generating
         Timer.Run()
         
         rd = random.randint(1,100) #randomly set event happen
@@ -72,18 +74,18 @@ def genEvent():
         #Window event
         if Event.devices[5].curState() == W_OPEN:
             if Event.devices[0].curState() < 85 and rd > 80:
-                Event.setEvent(W_CLOSED)
-        elif rd > 80:
-            if Event.devices[0].curState() > 60:
-                Event.setEvent(W_OPEN)
+                Event.setEvent(Window_Closed)
+        elif rd > 0:
+            if Event.devices[0].curState() > 80 and Event.devices[4].curState() == AC_OFF:
+                Event.setEvent(Window_Open)
         
         #AC Event
         if Event.devices[4].curState() == AC_ON:
-            if rd >90 and Event.devices[0].curState() > 60 :
-                Event.setEvent(AC_OFF)
+            if rd >70 and Event.devices[0].curState() > 60 :
+                Event.setEvent(AC_off)
         else:
-            if rd > 90:
-                Event.setEvent(AC_ON)
+            if rd > 95:
+                Event.setEvent(AC_on)
 
         #LightB Event
         if Event.devices[3].curState() == B_ON:
@@ -132,7 +134,7 @@ def EventHandle():
             sta_tbl += [de.state]
         Event.showState(sta_tbl)  
     df = pd.DataFrame(Event.state_tbl,columns=['Thermostat','LightSensor','LightA','LightB','AC','Window'])
-    df.to_csv("validate.csv")
+    df.to_csv("event.csv")
             
             
 class Timer:
@@ -202,7 +204,7 @@ class Thermostat(device):
     def isAvailable_state(self,state):
         if self.state >=85:
             tempState = T_HIGH
-        elif self.state < 60:
+        elif self.state <= 60:
             tempState = T_LOW
         else:
             tempState = T_NORM
@@ -215,13 +217,12 @@ class Thermostat(device):
     def setEvent(self,event):
         if self.state > 100:
             tempchg = [-1,0]
-        elif self.state < 50:
+        elif self.state < 45:
             tempchg = [0, 1]
         else:
             tempchg = [-1, 0, 1]
         t = random.choice(tempchg)
         self.state += t
-        #print(self.state)
         #Thermostat.scaler = self.state
         Event.setEvent(event)
 
@@ -329,6 +330,8 @@ class Light_B(device):
         if state == B_OFF or state ==B_ON:
             return True
         return False
+    def callback(self,event):
+        Event.setEvent(event)
     
 class AC(device):
     def __init__(self):
@@ -346,16 +349,15 @@ class AC(device):
         if event == AC_on or event == AC_off:
             return True
         return False
-    
+    def callback(self,event):
+        Event.setEvent(event)
 
 
 class Window(device):
     def __init__(self):
-        self.state = W_CLOSED
+        self.state = W_OPEN
         self.timer = Timer()
     def isAvailable_Out_state(self,state):
-        if self.timer in Timer.timer_queue and self.state == W_CLOSED:
-            self.timer.cancelTimer()
         if state == None:
             return True
         if state == W_CLOSED or state == W_OPEN:

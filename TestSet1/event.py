@@ -35,7 +35,7 @@ event_table = [
 
 def genEvent():
     times = 0
-    while times < 200: #how many data points we are generating
+    while times < 10000: #how many data points we are generating
         Timer.Run()
         
         rd = random.randint(1,100) #randomly set event happen
@@ -118,7 +118,7 @@ def EventHandle():
             sta_tbl += [de.state]
         Event.showState(sta_tbl)  
     df = pd.DataFrame(Event.state_tbl,columns=['Thermostat','Smoke_Alarm','Light A','Light B','Door','Person'])
-    df.to_csv("validate.csv")
+    df.to_csv("event.csv")
             
             
 class Timer:

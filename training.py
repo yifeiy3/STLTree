@@ -9,7 +9,7 @@ import numpy as np
 import pickle 
 
 #our training data
-signal_data = pd.read_csv("event.csv", index_col=None, header=None)
+signal_data = pd.read_csv("TestSet2/event.csv", index_col=None, header=None)
 ar = signal_data.to_numpy()
 ar = ar[np.newaxis, :, :] #our dataset
 alldevices = ar[0, 0, 1:].tolist()
@@ -23,7 +23,7 @@ if cdict is None:
     raise Exception("Learned class dict not found.")
 
 #add a validation set for pruning our tree
-validation_data = pd.read_csv("validate.csv", index_col=None, header=None)
+validation_data = pd.read_csv("TestSet2/validate.csv", index_col=None, header=None)
 va = validation_data.to_numpy()
 va = va[np.newaxis, :, :]
 validation_set = evaluationset(va, alldevices, cdict, interval=10, offset=2) #consistent with training set
