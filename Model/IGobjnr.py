@@ -15,7 +15,7 @@ def InfoGainNoRobustness(p, signal):
         return math.inf 
     robdeg = computeRobustness(p, signal)
 
-    (Strue, Sfalse, true_list, false_list) = partitionWeightsNoRobust(robdeg, signal.label, signal.lblclass)
+    (Strue, Sfalse, true_list, false_list) = partitionWeightsNoRobust(robdeg, signal.label, signal.lblclass, p.oper)
     #want to minimize this, as we are subtracting this term when computing info cost.
     return IG_costNoRobust(Strue, Sfalse, true_list, false_list)
 
@@ -24,10 +24,18 @@ def IG_costNoRobust(Strue, Sfalse, true_list, false_list):
     H_SFalse = sum([-x * math.log(x) for x in false_list])
     return Strue * H_Strue + Sfalse * H_SFalse
 
-def partitionWeightsNoRobust(robdeg, labels, lblclass):
-    Strue = robdeg > 0
-    Sfalse = robdeg <= 0
-
+def partitionWeightsNoRobust(robdeg, labels, lblclass, oper):
+    if oper == 'G' or 'FG':
+        Strue = robdeg > 0
+        Sfalse = robdeg <= 0
+    else:
+        '''
+            because we are using 0-1 variables, and computing F and 'GF' by negating the
+            robustness of statement's converse for G and FG, when robdeg = 0, they
+            should be in complete different classes.
+        '''
+        Strue = robdeg >= 0
+        Sfalse = robdeg < 0  
     p_Strue = np.sum(Strue)/labels.size if labels.size > 0 else 0
     p_Sfalse = 1 - p_Strue
 

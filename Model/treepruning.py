@@ -2,6 +2,12 @@ from .treeStruct import Node
 from .treePruneSelect import treeEvalPerformance
 import copy 
 
+#Devices exhibit random behavior outside of our defined rules, so sometimes our decision tree
+#learns the actual rules, but significantly increases the error on the other branch, since there
+#is no rules to be learned for that branch. We use this constant to make sure such splits will 
+#not be pruned. When one branch error decreased more than this constant, we keep the branch.
+IMPROVE_CONSTANT = 0.15 
+
 def isleaf(T):
     '''
         check wheter our current node is a leaf
@@ -45,6 +51,7 @@ def prune_basic_tree(parentnodes, epsilon = 0.02):
         fall below threshold epsilon,
         the split is unnecessary, can simply prune the split.
     '''
+    global IMPROVE_CONSTANT
     if not parentnodes:
         return #at root
     update = True 
@@ -55,9 +62,10 @@ def prune_basic_tree(parentnodes, epsilon = 0.02):
             lnode = nodes.leftchild
             rnode = nodes.rightchild
             if isleaf(lnode) and isleaf(rnode):
-                if nodes.predError <= lnode.predError + rnode.predError + epsilon:
+                if nodes.predError <= lnode.predError + rnode.predError + epsilon and \
+                   not (nodes.predError > lnode.predError + IMPROVE_CONSTANT or \
+                        nodes.predError > rnode.predError + IMPROVE_CONSTANT):
                     #this means the split is unnecessary
-                    print("we got here!")
                     nodes.chopleaf()
                     parentnodes.pop(i)
                     if not isleaf(nodes):

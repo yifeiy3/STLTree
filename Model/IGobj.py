@@ -16,7 +16,7 @@ def InfoGain(p, signal):
     robdeg_node = computeRobustness(p, signal)
     robdeg = np.minimum(robdeg_node, signal.robdeg)
 
-    (Strue, Sfalse, true_list, false_list) = partitionWeights(robdeg, signal.label, signal.lblclass)
+    (Strue, Sfalse, true_list, false_list) = partitionWeights(robdeg, signal.label, signal.lblclass, p.oper)
     #want to minimize this, as we are subtracting this term when computing info cost.
     return IG_cost(Strue, Sfalse, true_list, false_list)
 
@@ -25,9 +25,13 @@ def IG_cost(Strue, Sfalse, true_list, false_list):
     H_SFalse = sum([-x * math.log(x) for x in false_list])
     return Strue * H_Strue + Sfalse * H_SFalse
 
-def partitionWeights(robdeg, labels, lblclass):
-    Strue = robdeg > 0
-    Sfalse = robdeg <= 0
+def partitionWeights(robdeg, labels, lblclass, oper):
+    if oper == 'G' or 'FG':
+        Strue = robdeg > 0
+        Sfalse = robdeg <= 0
+    else: #due to handling for 0-1 variables
+        Strue = robdeg >= 0
+        Sfalse = robdeg < 0
     absrd = np.abs(robdeg)
     absrd_true = absrd[Strue]
     absrd_false = absrd[Sfalse]

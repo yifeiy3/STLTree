@@ -6,6 +6,9 @@ from Model.DataProcess.datahandling import trainingset, evaluationset
 import numpy as np 
 import pickle
 
+ERROR_THRESHOLD = 0.10 #since some state change are just random chance, only the mispredictions going lower
+                       #than this threshold is recorded as anomalies.
+
 signal_data = pd.read_csv("TestSet2/eval.csv", index_col=None, header=None)
 ar = signal_data.to_numpy()
 ar = ar[np.newaxis, :, :]
@@ -56,23 +59,26 @@ for signals in eval_set:
             for i in range(np.shape(signals.data)[0]):
                 data = signals.data[i, :, :]
                 single_sig = Signal(data[np.newaxis, :, :], signals.labelidx, signals.classdict, signals.alldevices, signals.label)
-                tpred = teval(T, single_sig)
+                error, tpred = teval(T, single_sig)
                 t_gt = single_sig.label[i]
                 if tpred != t_gt:
                     count = count + 1
-                    tpred_str = signals.classdict[labeldevice][tpred]
-                    t_gt_str = signals.classdict[labeldevice][t_gt]
-                    s = '___________________________________\n \
-                        Anomalie: \n \
-                        Predicted State: {0} \n \
-                        Actual State: {1} \n \
-                        Under data condition: \n {2} \n {3} \n'.format(
-                            tpred_str,
-                            t_gt_str,
-                            signals.device,
-                            reverse_classdict(signals, i)
-                        )
-                    outfile.write(s)
+                    if error <= ERROR_THRESHOLD: 
+                        #only print out the discrepancy with high probability prediction,
+                        #since some change of states are purely based on random chance.
+                        tpred_str = signals.classdict[labeldevice][tpred]
+                        t_gt_str = signals.classdict[labeldevice][t_gt]
+                        s = '___________________________________\n \
+                            Anomalie: \n \
+                            Predicted State: {0} \n \
+                            Actual State: {1} \n \
+                            Under data condition: \n {2} \n {3} \n'.format(
+                                tpred_str,
+                                t_gt_str,
+                                signals.device,
+                                reverse_classdict(signals, i)
+                            )
+                        outfile.write(s)
             outfile.write("total discrepancies: {0}\n".format(count))
             outfile.write("Discrepancy percentage: {0}\n".format(count/np.shape(signals.data)[0]))
     else:

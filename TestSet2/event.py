@@ -66,14 +66,14 @@ def genEvent():
 
         #LightA event
         
-        if Event.devices[2].curState() == A_ON and rd > 60:
+        if Event.devices[2].curState() == A_ON and rd > 98:
             Event.setEvent(LightA_OFF)
-        elif Event.devices[2].curState() == A_OFF and rd > 60:
+        elif Event.devices[2].curState() == A_OFF and rd > 98:
             Event.setEvent(LightA_ON)
         
         #Window event
         if Event.devices[5].curState() == W_OPEN:
-            if Event.devices[0].curState() < 85 and rd > 80:
+            if Event.devices[0].curState() < 85 and rd > 98:
                 Event.setEvent(Window_Closed)
         elif rd > 0:
             if Event.devices[0].curState() > 80 and Event.devices[4].curState() == AC_OFF:
@@ -81,7 +81,7 @@ def genEvent():
         
         #AC Event
         if Event.devices[4].curState() == AC_ON:
-            if rd >70 and Event.devices[0].curState() > 60 :
+            if rd > 98 and Event.devices[0].curState() > 60 :
                 Event.setEvent(AC_off)
         else:
             if rd > 95:
@@ -89,10 +89,10 @@ def genEvent():
 
         #LightB Event
         if Event.devices[3].curState() == B_ON:
-            if rd > 70 and Event.devices[0].curState() < 85 and Event.devices[1].curState() > 6:
+            if rd > 98 and Event.devices[0].curState() < 85 and Event.devices[1].curState() > 6:
                 Event.setEvent(LightB_OFF)
         if Event.devices[3].curState() == B_OFF:
-            if rd > 90 and Event.devices[1].curState() < 8:
+            if rd > 98 and Event.devices[1].curState() < 8:
                 Event.setEvent(LightB_ON)
             
         times +=1

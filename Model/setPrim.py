@@ -19,8 +19,9 @@ def primInit(num_signal_dim):
         primitives.append(FLPrimitives('G', dim_idx, '>', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, '<', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, '>', flparam, math.inf))
-        primitives.append(SLPrimitives('GF', dim_idx, '<', slparam, math.inf))
-        primitives.append(SLPrimitives('GF', dim_idx, '>', slparam, math.inf))
+        #TODO: Is GF needed in learning the rules? The wording kind of odd.
+        # primitives.append(SLPrimitives('GF', dim_idx, '<', slparam, math.inf))
+        # primitives.append(SLPrimitives('GF', dim_idx, '>', slparam, math.inf))
         primitives.append(SLPrimitives('FG', dim_idx, '<', slparam, math.inf))
         primitives.append(SLPrimitives('FG', dim_idx, '>', slparam, math.inf))
     
