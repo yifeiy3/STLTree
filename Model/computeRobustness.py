@@ -51,12 +51,16 @@ def fl_F(p, signal):
     ineq_dir = p.ineq
     if ineq_dir == '<':
         newp = copy.deepcopy(p)
-        newp.ineq_dir = '>'
-        return -fl_G(newp, signal)
+        newp.ineq = '>'
+        res = -fl_G(newp, signal)
+        #print(res)
+        return res 
     elif ineq_dir == '>':
         newp = copy.deepcopy(p)
-        newp.ineq_dir = '<'
-        return -fl_G(newp, signal)
+        newp.ineq = '<'
+        res = -fl_G(newp, signal)
+        #print(res)
+        return res 
     else:
         raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir))
 
@@ -86,17 +90,17 @@ def sl_FG(p, signal):
     return robustdeg
 
 def sl_GF(p, signal):
-    ineq_dir = p.ineq
-    if ineq_dir == '<':
+    ineq_dir_t = p.ineq
+    if ineq_dir_t == '<':
         newp = copy.deepcopy(p)
-        newp.ineq_dir = '>'
+        newp.ineq = '>'
         return -sl_FG(newp, signal)
-    elif ineq_dir == '>':
+    elif ineq_dir_t == '>':
         newp = copy.deepcopy(p)
-        newp.ineq_dir = '<'
+        newp.ineq = '<'
         return -sl_FG(newp, signal)
     else:
-        raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir))
+        raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir_t))
 
 def computeMinMaxFilt(a, windowlen):
     '''

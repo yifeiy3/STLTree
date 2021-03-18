@@ -43,8 +43,8 @@ class Node():
         data_right = self.signal.data[~lsat, :, :]
         if data_left.size <= 0 or data_right.size <=0:
             return None, None
-        robdeg_left = np.amin(robdeg[lsat])
-        robdeg_right = np.amin(robdeg[~lsat])
+        robdeg_left = np.minimum(robdeg[lsat], self.signal.robdeg[lsat])
+        robdeg_right = np.minimum(-robdeg[~lsat], self.signal.robdeg[~lsat])
         label_left = self.signal.label[lsat]
         label_right = self.signal.label[~lsat]
         signal_left = Signal(data_left, self.signal.labelidx, self.signal.classdict, self.signal.alldevices, label_left)

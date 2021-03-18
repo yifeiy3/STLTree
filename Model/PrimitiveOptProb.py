@@ -16,8 +16,8 @@ class FLPrimitiveProblem(Annealer):
             @param userobustness: whether we use robustness measure in our objective function
         '''
         initialstate = pinit.param
-        lb = np.amin(spacebounds[:, 0])
-        ub = np.amax(spacebounds[:, 1])
+        lb = spacebounds[pinit.dim, 0]
+        ub = spacebounds[pinit.dim, 1]
         if any([math.isnan(x) for x in initialstate]):
             initialstate[0] = timebounds[0] #beginning of timestamp
             initialstate[1] = timebounds[1] #end
@@ -29,8 +29,8 @@ class FLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        # self.Tmax = 12000.0
-        # self.steps = 18000
+        # self.Tmax = 20000.0
+        # self.steps = 30000
         self.Tmax = 800.0
         self.steps = 100
         self.userobustness = userobustness
@@ -65,8 +65,8 @@ class SLPrimitiveProblem(Annealer):
             primitive object with all parameters being Nan
         '''
         initialstate = pinit.param
-        lb = np.amin(spacebounds[:, 0])
-        ub = np.amax(spacebounds[:, 1])
+        lb = spacebounds[pinit.dim, 0]
+        ub = spacebounds[pinit.dim, 1]
         if any([math.isnan(x) for x in initialstate]):
             initialstate[0] = timebounds[0] #beginning of timestamp
             initialstate[1] = timebounds[1] #end
@@ -79,8 +79,8 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        # self.Tmax = 12000.0
-        # self.steps = 18000
+        # self.Tmax = 20000.0
+        # self.steps = 30000
         self.Tmax = 800.0
         self.steps = 100
         self.userobustness = userobustness
