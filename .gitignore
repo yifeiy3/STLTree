@@ -5,8 +5,7 @@ try.py
 nohup.out
 Model/__pycache__/
 Model/DataProcess/__pycache__/
-TestSet2/*.csv
-TestSet1/*.csv
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
