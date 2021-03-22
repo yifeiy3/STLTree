@@ -44,7 +44,7 @@ event_table = [
 def genEvent():
     #devices [Thermostat, LightSensor, LightA, LightB, AC, Window]
     times = 0
-    while times < 100: #how many data points we are generating
+    while times < 1000: #how many data points we are generating
         Timer.Run()
         
         rd = random.randint(1,100) #randomly set event happen

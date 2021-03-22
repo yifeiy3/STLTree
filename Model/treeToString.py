@@ -27,7 +27,7 @@ def NodeToString(node, lbldict, parentid, nodebranch, devicenames=None):
         )
         return ptsl_str
     else:
-        ptsl_str = ptsl.toString(devicenames)
+        ptsl_str = ptsl.toString()
         s = "Node id: {0} \n \
             Parent id: {1} \n \
             Node branch: {2} \n \

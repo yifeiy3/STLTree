@@ -4,13 +4,14 @@ from .PrimitiveCheckSat import primitiveCheckSat
 import math 
 
 class Node():
-    def __init__(self, parent, signals):
+    def __init__(self, parent, signals, branch):
         '''
             @param: the parent node 
             @param: the fraction of signals classified by our node
             @param: the learned formula corresponding to our node
         '''
         self.parent = parent
+        self.branch = branch
         self.leftchild = None 
         self.rightchild = None 
         self.signal = signals

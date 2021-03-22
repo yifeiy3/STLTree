@@ -18,7 +18,7 @@ def findnonleaf(T):
     '''
         find all the nodes of the tree that are not leaves, we prune from there
     '''
-    if isleaf(T):
+    if isleaf(T) or T is None:
         return []
     leftnonleaf = findnonleaf(T.leftchild)
     rightnonleaf = findnonleaf(T.rightchild)

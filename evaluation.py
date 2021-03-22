@@ -16,9 +16,10 @@ alldevices = ar[0, 0, 1:].tolist()
 print(alldevices)
 
 cdict = {}
-with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-    cdict = pickle.load(dictfile)
-if cdict is None:
+try:
+    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+        cdict = pickle.load(dictfile)
+except FileNotFoundError:
     raise Exception("Learned class dict not found.")
 
 eval_set = evaluationset(ar, alldevices, cdict, interval=10, offset=2) #need to be consistent with training

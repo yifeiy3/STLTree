@@ -5,25 +5,27 @@ from .PrimitiveOptProb import FLPrimitiveProblem, SLPrimitiveProblem, primitiveO
 from .computeSignalBounds import computeSignalBounds
 import numpy 
 
-def primInit(num_signal_dim):
+def primInit(signal_devices):
     '''
-        param: # of devices,
+        param: devices of label our label col
         we would infer at most one rule for each device so we start with empty rules.
     '''
     primitives = []
+    num_signal_dim = numpy.shape(signal_devices)[0]
     flparam = [math.nan, math.nan, math.nan]
     slparam = [math.nan, math.nan, math.nan, math.nan]
 
     for dim_idx in range(num_signal_dim):
-        primitives.append(FLPrimitives('G', dim_idx, '<', flparam, math.inf))
-        primitives.append(FLPrimitives('G', dim_idx, '>', flparam, math.inf))
-        primitives.append(FLPrimitives('F', dim_idx, '<', flparam, math.inf))
-        primitives.append(FLPrimitives('F', dim_idx, '>', flparam, math.inf))
+        dimname = signal_devices[dim_idx]
+        primitives.append(FLPrimitives('G', dim_idx, dimname, '<', flparam, math.inf))
+        primitives.append(FLPrimitives('G', dim_idx, dimname, '>', flparam, math.inf))
+        primitives.append(FLPrimitives('F', dim_idx, dimname, '<', flparam, math.inf))
+        primitives.append(FLPrimitives('F', dim_idx, dimname, '>', flparam, math.inf))
         #TODO: Is GF needed in learning the rules? The wording kind of odd.
-        # primitives.append(SLPrimitives('GF', dim_idx, '<', slparam, math.inf))
-        # primitives.append(SLPrimitives('GF', dim_idx, '>', slparam, math.inf))
-        primitives.append(SLPrimitives('FG', dim_idx, '<', slparam, math.inf))
-        primitives.append(SLPrimitives('FG', dim_idx, '>', slparam, math.inf))
+        # primitives.append(SLPrimitives('GF', dim_idx, dimname, '<', slparam, math.inf))
+        # primitives.append(SLPrimitives('GF', dim_idx, dimname, '>', slparam, math.inf))
+        primitives.append(SLPrimitives('FG', dim_idx, dimname, '<', slparam, math.inf))
+        primitives.append(SLPrimitives('FG', dim_idx, dimname, '>', slparam, math.inf))
     
     return primitives
     
@@ -63,7 +65,7 @@ def setBestPrimitive(signal):
     '''
         gets the best primitive to split our dataset, from simulated annealing algorithm.
     '''
-    sig_dim = numpy.shape(signal.device)[0]
-    primitives = primInit(sig_dim)
+    sig_devices = signal.device
+    primitives = primInit(sig_devices)
     opt_primitives = primOptimizationInit(signal, primitives)
     return primGetBest(opt_primitives)

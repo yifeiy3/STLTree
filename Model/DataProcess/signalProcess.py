@@ -26,7 +26,7 @@ class Signal():
             print(labelidx-1)
             print(copy_alldevice)  
             raise NotImplementedError  
-        self.device = copy_alldevice #a list of all the devices
+        self.device = copy_alldevice #a list of all the devices without label col.
         self.alldevices = alldevices
         self.data = dataframe
         self.robdeg = np.full((np.shape(dataframe)[0],), np.inf) 

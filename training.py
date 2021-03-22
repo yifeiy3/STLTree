@@ -30,8 +30,6 @@ validation_set = evaluationset(va, alldevices, cdict, interval=10, offset=2) #co
 
 learnedTrees = [] #list of learned decision trees
 for i in range(len(training_set)): 
-    if(i != 1):
-        continue
     signals = training_set[i]
     T = buildTree(signals)
     learnedTrees.append(T)
