@@ -11,7 +11,8 @@ import pandas as pd
 #event define
 Temp_Chg_H,ThermoGT85,LightA_OFF,LightA_ON,LightB_OFF,LightB_ON = 101,102,103,104,105,106
 AC_off, AC_on, Window_Open, Window_Closed, LightSensor_GT8 ,LightSensor_LT6, Temp_Chg_L, ThermoLT60 = 107,108,109,110,111,112,113,114
-Temp_Chg_N, LightSensor_H, LightSensor_L, LightSensor_N, ThermoNorm, LightNorm = 115,116,117,118, 119,120
+Temp_Chg_N, LightSensor_H, LightSensor_L, LightSensor_N, ThermoNorm, LightNorm, LightA_ON_COND = 115,116,117,118, 119,120, 121
+LightB_MAKE_A_ON = 122
 #state define 
 A_ON,A_OFF,B_ON,B_OFF,AC_ON,AC_OFF,W_OPEN,W_CLOSED = 201,202,203,204,205,206,207,208
 T_HIGH, T_LOW, T_NORM, L_HIGH, L_LOW, L_NORM = 209,210,211,212,213,214
@@ -27,7 +28,9 @@ event_table = [
     (LightA_OFF,       A_ON,     A_OFF,     None,             0),
     (LightA_ON,        A_OFF,    A_ON,      None,             0),
     (LightB_OFF,       B_ON,     B_OFF,     None,             0),
-    (LightB_ON,        B_OFF,    B_ON,      None,             0),
+    (LightB_ON,        B_OFF,    B_ON,      None,              0),
+    (LightA_ON_COND,   A_OFF,    None,      LightA_ON,         0),
+    # (LightB_MAKE_A_ON,   A_OFF,    A_ON,     None,         0),
     (LightSensor_GT8,  L_HIGH,   None,     LightA_OFF,         0),
     (LightSensor_GT8,  L_HIGH,   None,     LightB_OFF,         0),
     (LightSensor_LT6,  T_HIGH,   L_LOW,      LightB_ON,         0),
@@ -48,6 +51,8 @@ def genEvent():
         Timer.Run()
         
         rd = random.randint(1,100) #randomly set event happen
+        rd2 = random.randint(1,100)
+
         #thermostat event
         if Event.devices[0].curState() >= 85:
             Event.setEvent(Temp_Chg_H)
@@ -66,10 +71,13 @@ def genEvent():
 
         #LightA event
         
-        if Event.devices[2].curState() == A_ON and rd > 98:
+        if Event.devices[2].curState() == A_ON and rd2 > 80:
             Event.setEvent(LightA_OFF)
-        elif Event.devices[2].curState() == A_OFF and rd > 98:
-            Event.setEvent(LightA_ON)
+        elif Event.devices[2].curState() == A_OFF and Event.devices[1].curState() < 9:
+            if rd2 > 99:
+                Event.setEvent(LightA_ON)
+            else:
+                Event.setEvent(LightA_ON_COND)
         
         #Window event
         if Event.devices[5].curState() == W_OPEN:
@@ -81,19 +89,25 @@ def genEvent():
         
         #AC Event
         if Event.devices[4].curState() == AC_ON:
-            if rd > 98 and Event.devices[0].curState() > 60 :
+            if rd2 > 98 and Event.devices[0].curState() > 60 :
                 Event.setEvent(AC_off)
         else:
-            if rd > 95:
+            if rd2 > 95:
                 Event.setEvent(AC_on)
 
         #LightB Event
         if Event.devices[3].curState() == B_ON:
-            if rd > 98 and Event.devices[0].curState() < 85 and Event.devices[1].curState() > 6:
+            if rd > 70 and Event.devices[0].curState() < 85 and Event.devices[1].curState() > 6:
                 Event.setEvent(LightB_OFF)
+            else:
+                Event.devices[3].pastfive.pop(0) #pop last event of light B, should be @ front
+                Event.devices[3].pastfive.append(Event.devices[3].pastfive[-1])
         if Event.devices[3].curState() == B_OFF:
-            if rd > 98 and Event.devices[1].curState() < 8:
+            if rd > 95 and Event.devices[1].curState() < 9:
                 Event.setEvent(LightB_ON)
+            else:
+                Event.devices[3].pastfive.pop(0)
+                Event.devices[3].pastfive.append(Event.devices[3].pastfive[-1])
             
         times +=1
         yield Event.event_tbl
@@ -319,17 +333,30 @@ class Light_B(device):
     def __init__(self):
         self.state = B_OFF
         self.timer = Timer()
+        self.pastfive = ["off", "off", "off", "off", "off", "off", "off"]
 
     def isAvailable_event(self,event):
-        if event == LightB_ON or event == LightB_OFF:
+        if event == LightB_ON or event == LightB_OFF or event == LightA_ON_COND:
             return True
         return False
     def isAvailable_Out_state(self,state):
         if state == None:
             return True
-        if state == B_OFF or state ==B_ON:
+        if state == B_OFF:
+            self.pastfive.pop(0) 
+            self.pastfive.append('off')
+            return True
+        if state == B_ON:
+            self.pastfive.pop(0) 
+            self.pastfive.append('on')
             return True
         return False
+
+    def setEvent(self,event):
+        if event == LightA_ON and sum([x == 'on' for x in self.pastfive]) < 4:
+            return 
+        Event.setEvent(event)
+
     def callback(self,event):
         Event.setEvent(event)
     
