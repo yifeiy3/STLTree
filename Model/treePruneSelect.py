@@ -12,7 +12,7 @@ def treeEvalPerformance(T, signals):
     for i in range(np.shape(signals.data)[0]):
         data = signals.data[i, :, :]
         single_sig = Signal(data[np.newaxis, :, :], signals.labelidx, signals.classdict, signals.alldevices, signals.label)
-        tpred = teval(T, single_sig)
+        _terror, tpred = teval(T, single_sig)
         t_gt = single_sig.label[i]
         if tpred != t_gt:
             mcc += 1

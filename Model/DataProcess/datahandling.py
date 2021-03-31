@@ -4,28 +4,52 @@ import numpy as np
 import copy 
 import pickle 
 
+def separate_dataset(dataset, interval):
+    '''
+        for Samsung Smarttthings data, it is possible to have large gaps between events,
+        we use this to separate the large gaps into components where we have separation
+        by 1 second.
+    '''
+    components = []
+    num_data = np.shape(dataset)[0]
+    last_ts = 0 #if difference > 10, we are at a different component for analyze.
+    last_cut = 1 #beginning of this component
+    for i in range(1, num_data): #first row is our device column
+        curr_ts = int(dataset[i, 0]) #this should be the row idx.
+        if curr_ts - interval > last_ts:
+            if curr_ts >= last_cut + interval:
+                #if the component is big enough to separate into our interval
+                components.append(dataset[last_cut: i, :])
+            last_cut = i
+        last_ts = curr_ts 
+    if num_data - last_cut > 10:
+        components.append(dataset[last_cut: num_data, :])
+    return components
+            
+
 def separate_by_intervals(dataset, interval, offset):
     '''
         since our data exhibits behavior for the entire day, separate into
         short time intervals to help learning.
         Default interval length: 10 timestamplength, 
         each interval we shift from beginning of last interval after 5 timestamplength.
-        @param: dataset, a 3 dimensional numpy array, described by Signal object
+        @param: dataset, a list of 2 dimensional numpy array
+                each 2d array represents a component of data described by separate_dataset.
     '''
     ds_list = []
-    num_data = np.shape(dataset)[0]
-    for i in range(num_data):
-        num_rows = np.shape(dataset)[1] - 1
+    for i in range(len(dataset)):
+        datacomponent = dataset[i]
+        num_rows = np.shape(datacomponent)[0] - 1
         for j in range(1, num_rows, offset):
             end = j + interval
             if end >= num_rows - 1:
                 diff = end - num_rows + 1
-                ds = (dataset[i, j - diff + 1:num_rows, :])
+                ds = (datacomponent[j - diff + 1:num_rows, :])
                 ds = ds[np.newaxis, :, :]
                 ds_list.append(ds)
                 break #we reached the end
             else:
-                ds = (dataset[i, j: end, :])
+                ds = (datacomponent[j: end, :])
                 ds = ds[np.newaxis, :, :]
                 ds_list.append(ds)
     return np.concatenate(ds_list)
@@ -115,7 +139,8 @@ def construct_trainingset(data_by_intervals, classdict, alldevices):
     
 
 def trainingset(dataset, alldevices, interval = 10, offset = 2):
-    data_by_intervals = separate_by_intervals(dataset, interval, offset)
+    data_components = separate_dataset(dataset, interval)
+    data_by_intervals = separate_by_intervals(data_components, interval, offset)
     ds, classdict = construct_classdict(data_by_intervals, alldevices)
     print(classdict)
     res = construct_trainingset(ds, classdict, alldevices)
@@ -126,6 +151,7 @@ def trainingset(dataset, alldevices, interval = 10, offset = 2):
 def evaluationset(dataset, alldevices, classdict, interval = 10, offset = 2):
     #different than training set, we need to use the class dictionary learned from our trainingset
     #to avoid any representation discrepancy.
-    data_by_intervals = separate_by_intervals(dataset, interval, offset)
+    data_components = separate_dataset(dataset, interval)
+    data_by_intervals = separate_by_intervals(data_components, interval, offset)
     ds = build_from_classdict(data_by_intervals, alldevices, classdict)
     return construct_trainingset(ds, classdict, alldevices)

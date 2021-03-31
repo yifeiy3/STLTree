@@ -11,8 +11,7 @@ ERROR_THRESHOLD = 0.10 #since some state change are just random chance, only the
 
 signal_data = pd.read_csv("TestSet2/eval.csv", index_col=None, header=None)
 ar = signal_data.to_numpy()
-ar = ar[np.newaxis, :, :]
-alldevices = ar[0, 0, 1:].tolist()
+alldevices = ar[0, 1:].tolist()
 print(alldevices)
 
 cdict = {}

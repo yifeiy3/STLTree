@@ -10,12 +10,12 @@ def teval(T, signal):
         return the class by our learned tree
     '''
     if T.PTSLformula is None: #all the data is of one class
-        return T.predClass
+        return T.predError, T.predClass
     if T.leftchild is None: #should be a leaf
         if T.rightchild:
             print("Null split 1, this should not happen")
             raise Exception("Not Implemented")
-        return T.predClass 
+        return T.predError, T.predClass 
     if T.rightchild is None: #should be a leaf
         print("Null split 2, this should not happen")
         raise Exception("Not Implemented")
