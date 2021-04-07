@@ -22,8 +22,9 @@ def separate_dataset(dataset, interval):
                 components.append(dataset[last_cut: i, :])
             last_cut = i
         last_ts = curr_ts 
-    if num_data - last_cut > 10:
+    if num_data - last_cut > 1:
         components.append(dataset[last_cut: num_data, :])
+    print(components[0])
     return components
             
 
@@ -39,10 +40,11 @@ def separate_by_intervals(dataset, interval, offset):
     ds_list = []
     for i in range(len(dataset)):
         datacomponent = dataset[i]
-        num_rows = np.shape(datacomponent)[0] - 1
-        for j in range(1, num_rows, offset):
+        print(datacomponent)
+        num_rows = np.shape(datacomponent)[0]
+        for j in range(0, num_rows, offset):
             end = j + interval
-            if end >= num_rows - 1:
+            if end > num_rows:
                 diff = end - num_rows + 1
                 ds = (datacomponent[j - diff + 1:num_rows, :])
                 ds = ds[np.newaxis, :, :]
@@ -52,6 +54,7 @@ def separate_by_intervals(dataset, interval, offset):
                 ds = (datacomponent[j: end, :])
                 ds = ds[np.newaxis, :, :]
                 ds_list.append(ds)
+    print(ds_list[2])
     return np.concatenate(ds_list)
 
 def checkint(s):

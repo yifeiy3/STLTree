@@ -16,7 +16,7 @@ class Monitor():
             "kind":thing}
         return self._retrieveInfo(param)
     
-    def getStates(self, stateName, thing_id, since=None, max_sts = 1000):
+    def getStates(self, stateName, thing_id, since=None, max_sts = 5000):
         if since is None:
             param = {"function":"states",
                 "state":stateName,
@@ -30,7 +30,7 @@ class Monitor():
                 "max":max_sts}
         return self._retrieveInfo(param)
     
-    def getEvents(self, thing_id, max_evts=1000, since=None):
+    def getEvents(self, thing_id, max_evts=5000, since=None):
         param = {"function":"events",
             "max":max_evts,
             "since":since,

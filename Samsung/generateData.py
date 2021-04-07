@@ -1,6 +1,7 @@
 import getDeviceInfo as gd 
 import json 
 import pandas as pd 
+from datetime import datetime, timedelta
 
 def sec_diff(date_ref, date):
     '''
@@ -10,9 +11,9 @@ def sec_diff(date_ref, date):
     month_diff = int(date[5:7]) - int(date_ref[5:7])
     month_gap = 30
     if month_diff > 0:
-        if int(date_ref) in [1, 3, 5, 7, 8, 10, 12]:
+        if int(date_ref[5:7]) in [1, 3, 5, 7, 8, 10, 12]:
             month_gap = 31 
-        elif int(date_ref) == 2:
+        elif int(date_ref[5:7]) == 2:
             if(int(date_ref[0:4]) % 4 == 0):
                 month_gap = 29
             else:
@@ -36,6 +37,8 @@ APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/07043c
 md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
+since = None 
+since = datetime.utcnow() - timedelta(hours = 20) #last 12 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -47,9 +50,12 @@ for device in devices:
         else:
             deviceCol.append(device["name"] + "_" + attribute)
             #print("Attribute Name: {0}".format(attribute))
-            states = md.getStates(attribute, device["id"])
+            states = md.getStates(attribute, device["id"], since=since)
             for state in states:
                 statechgs.append((state["date"], device["name"], state["state"], state["value"]))
+
+if not statechgs:
+    raise Exception("We have no data in the environment")
 
 mindate = min(statechgs, key=lambda x: x[0])
 for i in range(len(statechgs)):
