@@ -6,6 +6,10 @@ nohup.out
 Model/__pycache__/
 Model/DataProcess/__pycache__/
 *.csv
+*.log 
+ModelsNoSTL/__pycache__/
+ModelsNoSTL/logs/
+Samsung/__pycache__/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

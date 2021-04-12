@@ -9,10 +9,17 @@ import numpy as np
 import pickle 
 
 #our training data
-signal_data = pd.read_csv("Samsung/event.csv", index_col=None, header=None)
-ar = signal_data.to_numpy()
+data_csv = ['Samsung/event.csv', 'Samsung/event1.csv', 'Samsung/event2.csv', 'Samsung/event3.csv']
+validate_csv = ['Samsung/validate.csv']
+ar = []
+for csv_file in data_csv:
+    signal_data = pd.read_csv(csv_file, index_col=None, header=None)
+    ar.append(signal_data.to_numpy())
 #ar = ar[np.newaxis, :, :] #our dataset
-alldevices = ar[0, 1:].tolist()
+if ar:
+    alldevices = ar[0][0, 1:].tolist()
+else:
+    raise Exception("We do not have data files")
 #print(alldevices)
 training_set = trainingset(ar, alldevices, interval=10, offset=2) #a list of signals for training from our dataset
 
@@ -23,8 +30,10 @@ if cdict is None:
     raise Exception("Learned class dict not found.")
 
 #add a validation set for pruning our tree
-validation_data = pd.read_csv("Samsung/validate.csv", index_col=None, header=None)
-va = validation_data.to_numpy()
+va = []
+for csv_file in validate_csv:
+    validation_data = pd.read_csv(csv_file, index_col=None, header=None)
+    va.append(validation_data.to_numpy())
 validation_set = evaluationset(va, alldevices, cdict, interval=10, offset=2) #consistent with training set
 
 learnedTrees = [] #list of learned decision trees

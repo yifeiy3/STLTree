@@ -1,7 +1,9 @@
 import getDeviceInfo as gd 
 import json 
-import pandas as pd 
+import pandas as pd
+import IgnoredAttributes 
 from datetime import datetime, timedelta
+
 
 def sec_diff(date_ref, date):
     '''
@@ -30,15 +32,15 @@ def initialState(length):
 
 #Used to generate data from the Samsung Smartthings Environment for STL Tree learning
 monitorid = "9793402f-fcb7-42af-8461-da541b539f01" #arbitrary id for a device called monitor
-stdattrribute = ['checkInterval', 'battery', 'healthStatus', 'DeviceWatch-DeviceStatus', 'DeviceWatch-Enroll', 'versionNumber']
+stdattrribute = IgnoredAttributes.IgnoredAttributeList
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
-APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/07043c3c-81c3-488f-9b6b-5c085f559432"
+APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/8df513f0-6d1c-4654-b0f9-0c4e947d27d6"
 
 md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(hours = 20) #last 12 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes = 150) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -51,6 +53,8 @@ for device in devices:
             deviceCol.append(device["name"] + "_" + attribute)
             #print("Attribute Name: {0}".format(attribute))
             states = md.getStates(attribute, device["id"], since=since)
+            #print(len(states)) 
+            #for each device, at most 200 states is stored....
             for state in states:
                 statechgs.append((state["date"], device["name"], state["state"], state["value"]))
 
@@ -113,6 +117,6 @@ df = pd.DataFrame(datalist, index=the_timestamps, columns = deviceCol)
 drop_cols = [deviceCol[i] for i in range(len(deviceCol)) if not hasInfo[i]]
 print("dropped columns: {0}".format(drop_cols))
 df = df.drop(drop_cols, axis = 1)
-df.to_csv("event.csv")
+df.to_csv("test.csv")
 
 

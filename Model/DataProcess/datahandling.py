@@ -4,27 +4,28 @@ import numpy as np
 import copy 
 import pickle 
 
-def separate_dataset(dataset, interval):
+def separate_dataset(datasets, interval):
     '''
         for Samsung Smarttthings data, it is possible to have large gaps between events,
         we use this to separate the large gaps into components where we have separation
         by 1 second.
     '''
     components = []
-    num_data = np.shape(dataset)[0]
-    last_ts = 0 #if difference > 10, we are at a different component for analyze.
-    last_cut = 1 #beginning of this component
-    for i in range(1, num_data): #first row is our device column
-        curr_ts = int(dataset[i, 0]) #this should be the row idx.
-        if curr_ts - interval > last_ts:
-            if curr_ts >= last_cut + interval:
-                #if the component is big enough to separate into our interval
-                components.append(dataset[last_cut: i, :])
-            last_cut = i
-        last_ts = curr_ts 
-    if num_data - last_cut > 1:
-        components.append(dataset[last_cut: num_data, :])
-    print(components[0])
+    for dataset in datasets:
+        num_data = np.shape(dataset)[0]
+        last_ts = 0 #if difference > 10, we are at a different component for analyze.
+        last_cut = 1 #beginning of this component
+        for i in range(1, num_data): #first row is our device column
+            curr_ts = int(dataset[i, 0]) #this should be the row idx.
+            if curr_ts - interval > last_ts:
+                if curr_ts >= last_cut + interval:
+                    #if the component is big enough to separate into our interval
+                    components.append(dataset[last_cut: i, :])
+                last_cut = i
+            last_ts = curr_ts 
+        if num_data - last_cut > 1:
+            components.append(dataset[last_cut: num_data, :])
+        print(components[0])
     return components
             
 

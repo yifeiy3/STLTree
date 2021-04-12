@@ -9,9 +9,12 @@ import pickle
 ERROR_THRESHOLD = 0.10 #since some state change are just random chance, only the mispredictions going lower
                        #than this threshold is recorded as anomalies.
 
-signal_data = pd.read_csv("TestSet2/eval.csv", index_col=None, header=None)
-ar = signal_data.to_numpy()
-alldevices = ar[0, 1:].tolist()
+eval_csv = ['TestSet2/eval.csv']
+for csv_file in eval_csv:
+    signal_data = pd.read_csv(csv_file, index_col=None, header=None)
+    ar = signal_data.to_numpy()
+if ar:
+    alldevices = ar[0, 1:].tolist()
 print(alldevices)
 
 cdict = {}

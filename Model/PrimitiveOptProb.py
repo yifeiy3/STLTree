@@ -29,10 +29,10 @@ class FLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        self.Tmax = 10000.0
-        self.steps = 6000
-        #self.Tmax = 800.0
-        #self.steps = 100
+        #self.Tmax = 10000.0
+        #self.steps = 6000
+        self.Tmax = 800.0
+        self.steps = 100
         self.userobustness = userobustness
 
     def move(self):
@@ -79,10 +79,10 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        self.Tmax = 10000.0
-        self.steps = 6000
-        #self.Tmax = 800.0
-        #self.steps = 100
+        #self.Tmax = 10000.0
+        #self.steps = 6000
+        self.Tmax = 800.0
+        self.steps = 100
         self.userobustness = userobustness
 
     def move(self):

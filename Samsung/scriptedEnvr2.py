@@ -8,7 +8,7 @@ import time
 import random 
 '''
     Script to generate Samsung Smartthings simulation test data, using Selenium
-    This is used to generate our DataEnvironmentSamsung.txt
+    This is used to generate our DataEnvironmentSamsung2.txt
 '''
 
 browser = webdriver.Firefox()
@@ -37,9 +37,9 @@ time.sleep(1)
 mySmartApp = browser.find_elements_by_xpath("//ul[@class='nav navbar-nav main']//li[@class='']")
 mySmartApp[3].click() #this should be of My SmartApps button
 
-#Open "Household device" app
+#Open "Change Thermostat Temperature" app
 WebDriverWait(browser, 5).until(presence_of_element_located(
-    (By.XPATH, "//a[@href='/ide/app/editor/ef6b1a8c-b2f6-457c-865a-643242f99b8b']"))).click()
+    (By.XPATH, "//a[@href='/ide/app/editor/4d25e960-105e-40d1-ba56-2a33ec53480f']"))).click()
 
 #Now we need to install the app
 WebDriverWait(browser, 10).until(presence_of_element_located(
@@ -55,19 +55,19 @@ for dropdowns in prefoptions:
 
 #install the 4 devices
 browser.find_element_by_xpath(
-    "//input[@id='switch1' and @value='4db1d2f7-41d5-466a-8d48-570f14ca4886']"
+    "//input[@id='switches' and @value='4db1d2f7-41d5-466a-8d48-570f14ca4886']"
 ).click()
 browser.find_element_by_xpath(
-    "//input[@id='switch2' and @value='abeafef6-7372-4347-bab6-4f485b8fb2d7']"
+    "//input[@id='thermostats' and @value='4aab9d7f-ea5c-40f6-a4f0-7243e943b7f9']"
 ).click()
 try:
     browser.find_element_by_xpath(
-        "//input[@id='smokeAlarm' and @value='25afa2d1-8013-454d-bd42-7b5a9fa87173']"
+        "//input[@id='smokealarm' and @value='25afa2d1-8013-454d-bd42-7b5a9fa87173']"
     ).click()
 except:
     prefoptions[2].click()
     browser.find_element_by_xpath(
-        "//input[@id='smokeAlarm' and @value='25afa2d1-8013-454d-bd42-7b5a9fa87173']"
+        "//input[@id='smokealarm' and @value='25afa2d1-8013-454d-bd42-7b5a9fa87173']"
     ).click()
 
 browser.find_element_by_xpath(
@@ -80,23 +80,22 @@ vs1 = WebDriverWait(browser, 10).until(presence_of_element_located((By.XPATH,
     "//div[@class='tile tile-standard wmain hmain device' and \
     @data-device='4db1d2f7-41d5-466a-8d48-570f14ca4886']"
 )))                                     #virtual switch 1
-vs2 = WebDriverWait(browser, 10).until(presence_of_element_located((By.XPATH,
-    "//div[@class='tile tile-standard wmain hmain device' and \
-    @data-device='abeafef6-7372-4347-bab6-4f485b8fb2d7']"
-)))                                        #virtual switch 2
 door =   WebDriverWait(browser, 10).until(presence_of_element_located((By.XPATH,
     "//div[@class='tile tile-standard wmain hmain device' and \
     @data-attr='lock' and @data-device='c4a159b1-cadd-41aa-9b17-cc0e9643c9a8']"
 )))                                         #door 
 
+#get temperature change button
+trigger = WebDriverWait(browser, 10).until(presence_of_element_located((By.XPATH,
+    "//div[@class='toolbar']//button[@class='btn btn-xs btn-default simulate-touch']"    
+)))
+
 #start generating data  
 for i in range(1500):
     rv1 = random.random()
-    if rv1 > 0.7:
+    trigger.click()
+    if rv1 > 0.8:
         vs1.click()
-        print('we got here')
-    elif rv1 < 0.5:
-        vs2.click()
-    else:
+    elif rv1 < 0.2:
         door.click()
-    time.sleep(3)
+    time.sleep(1)
