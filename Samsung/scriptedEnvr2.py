@@ -91,11 +91,13 @@ trigger = WebDriverWait(browser, 10).until(presence_of_element_located((By.XPATH
 )))
 
 #start generating data  
-for i in range(1500):
+for i in range(800):
     rv1 = random.random()
     trigger.click()
-    if rv1 > 0.8:
+    if rv1 > 0.7:
         vs1.click()
-    elif rv1 < 0.2:
+        print("vs1 is clicked")
+    elif rv1 < 0.3:
         door.click()
+        print("door is clicked")
     time.sleep(1)

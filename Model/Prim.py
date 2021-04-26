@@ -13,6 +13,7 @@ class Primitives():
     '''
         @field oper: the type of primitive, G/F/GF/FG
         @field dim_idx: the dimension our primitive is associated with (i.e which device's state)
+        @field dimname: current primitive's corresponding device
         @field ineq_dir: the inequality direction, </>
     '''
     def __init__(self, oper, dim_idx, dimname, ineq_dir):
@@ -65,7 +66,7 @@ class FLPrimitives(Primitives):
             )
         return translate
     
-    def negateWordString(self, dim_names = None):
+    def negateWordString(self):
         negate = ''
         if self.oper == 'F':
             negate = 'From seconds {0} to {1}, {2} is always {3} {4}'.format(
@@ -122,7 +123,7 @@ class SLPrimitives(Primitives):
             )
         return translate
     
-    def negateWordString(self, dim_names = None):
+    def negateWordString(self):
         negate = ''
         if self.oper == 'GF':
             negate = 'From {0} to {1}, {3} becomes {4} {5} for at least {2} seconds'.format(

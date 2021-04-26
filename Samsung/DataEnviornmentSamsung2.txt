@@ -6,5 +6,5 @@ Door: [open, locked]
 Rule: Thermostat >= 80 for 3 seconds ----> Smoke Alarm siren 
       Thermostate < 80 ---> Smoke Alarm off 
       Smoke Alarm Siren and Virtual Switch 1 on ----> Door unlock after 2 seconds 
-      Thermostat < 65 for 3 seconds ----> Virtual Switch 1 on 
+      Thermostat < 65 for 3 seconds ----> Virtual Switch 1 off 
 

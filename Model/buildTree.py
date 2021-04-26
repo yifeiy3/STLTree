@@ -2,8 +2,8 @@ from .setPrim import setBestPrimitive
 from .treeStruct import Node 
 import numpy as np 
 
-max_depth = 5 #maximum depth of the tree
-frac_same = 0.97 #once we reach 99% accuracy of the class, we stop splitting that branch
+max_depth = 4 #maximum depth of the tree
+frac_same = 0.95 #once we reach 95% accuracy of the class, we stop splitting that branch
 min_nobj = 30 #min number of signals in the class to continue recursion
 
 def check_stop(tree):

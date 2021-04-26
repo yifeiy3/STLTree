@@ -10,7 +10,7 @@ Rules
     Switch 1 on -----> Switch 2 on after 3 seconds
     Switch 2 off -----> Door lock after 2 sconds, 
     Switch 1 and 2 on ----> Smoke Alarm siren  
-    Smoke Alarm siren -----> Door Unlock 
+    Smoke Alarm siren -----> Door Unlock after 2 seconds
     Switch 2 off -----> Smoke Alarm off 
 
 Only Smoke Alarm can not randomly change state.

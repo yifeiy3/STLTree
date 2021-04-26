@@ -11,7 +11,7 @@ def findleaves(T):
         return [T] 
     return findleaves(T.leftchild) + findleaves(T.rightchild)
 
-def printRule(T, dim_names=None):
+def printRule(T):
     s = ''
     if T is None:
         return s
@@ -35,7 +35,7 @@ ERROR_THRESHOLD = 0.10 #since some state change are only random choice, we shoul
 cdict = {}
 with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
     cdict = pickle.load(dictfile)
-if cdict is None:
+if not cdict:
     raise Exception("Learned class dict not found")
 
 devices = cdict.keys()
@@ -72,4 +72,5 @@ for device in devices:
                     ofile.write("or")
                 count += 1
             ofile.write("___________________________________________\n")
-
+    
+    

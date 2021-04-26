@@ -171,7 +171,8 @@ def evaluate(treemodel, feature_set, gt, encoder, class_label, writefile):
                         outfile.write("\t" + str(cond) + "\n")
 
 
-data_csv = ['../Samsung/event.csv', '../Samsung/event1.csv', '../Samsung/event2.csv', '../Samsung/event3.csv']
+data_csv = ['../Samsung/test.csv', '../Samsung/test1.csv', '../Samsung/test2.csv', '../Samsung/test3.csv',
+'../Samsung/test4.csv', '../Samsung/test5.csv', '../Samsung/test6.csv', '../Samsung/test7.csv']
 ar = []
 for csv_file in data_csv:
     store_data = pd.read_csv(csv_file, index_col=0)
@@ -181,7 +182,7 @@ heads = list(store_data.columns.values)
 cd = data_process(heads, ar, 1, 1) #header, data, timeperiod, label_time
 treemodels = train_tree(cd, 3)
 
-eval_csv = ['../Samsung/validate.csv']
+eval_csv = ['../Samsung/test.csv']
 evar = []
 for csv_file in eval_csv:
     eval_data = pd.read_csv(csv_file, index_col=0)

@@ -94,9 +94,11 @@ for i in range(1500):
     rv1 = random.random()
     if rv1 > 0.7:
         vs1.click()
-        print('we got here')
+        print('Light A is clicked')
     elif rv1 < 0.5:
         vs2.click()
+        print('Light B is clicked')
     else:
         door.click()
+        print('Door is clicked')
     time.sleep(3)
