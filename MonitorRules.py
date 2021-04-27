@@ -23,7 +23,9 @@ def sec_diff(date_ref, date):
 
 class MonitorRules():
     def __init__(self, rules, devices, max_states = 5):
-        #@param: max_states: maximum number of states for each device our monitor stores
+        '''
+            @param: max_states: maximum number of states for each device our monitor stores
+        '''
         self.devices = devices 
         self.deviceStates = self._initializeState(devices)
         self.rules = rules #dont rules received from ParseRules.py 
