@@ -83,6 +83,7 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate)
+                print("datediff: {0}".format(datediff))
                 if datediff <= hi and datediff >= lo:
                     j = i+1 
                     while j < len(currentStates):
@@ -94,6 +95,8 @@ class MonitorRules():
                             if t_value not in possibleStates:
                                 return False
                             j = j+1
+                    if datediff >= gap: #no state change has happened since
+                        return True 
             return False #no F has happend
 
         else: #GF case 
@@ -105,7 +108,7 @@ class MonitorRules():
                     if date >= lo_int and date <= hi_int:
                         hasSatisfied = True 
                         break 
-                if not hasSatisfied:
+                if not hasSatisfied: #it must be satisfied for each interval
                     return False 
             return True 
 

@@ -46,7 +46,7 @@ class MyServer(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(bytes("{0}.{1}()".format(currentquery[1], should), "utf-8"))
+            self.wfile.write(bytes("{0}".format(should), "utf-8"))
         else:   
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     #ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10)
     #for testing purpose
-    ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'G', '<=', (3, 1, -1), ['off'])]]}}
+    ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'FG', '<=', (5, 3, 2), ['off'])]]}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")
