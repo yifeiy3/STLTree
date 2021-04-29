@@ -1,7 +1,8 @@
 
 def sec_diff(date_ref, date):
     '''
-        compute the second diff between date timestamps
+        compute the second diff between date timestamps, hardcode style
+        Date format is IsoDate for devices: yyyy-MM-ddThh:mm:ss
     '''
     #we would at most have last 7 days of data so no need to worry about year 
     month_diff = int(date[5:7]) - int(date_ref[5:7])
@@ -18,8 +19,7 @@ def sec_diff(date_ref, date):
     hour_diff = int(date[11:13]) - int(date_ref[11:13])
     minute_diff = int(date[14:16]) - int(date_ref[14:16])
     sec_diff = int(date[17: 19]) - int(date_ref[17:19])
-    # +10 for padding so we can analyze the first event with 10 second intervals.
-    return day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff + 10
+    return day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff
 
 class MonitorRules():
     def __init__(self, rules, devices, max_states = 5):
@@ -38,31 +38,38 @@ class MonitorRules():
         return deviceState 
     
     def updateState(self, date, device, state, value):
-        if state not in self.deviceStates:
-            self.deviceStates[state] = [(date, value)]
+        if state not in self.deviceStates[device]:
+            self.deviceStates[device][state] = [(date, value)]
         else:
-            st = self.deviceStates[state]
+            st = self.deviceStates[device][state]
             if len(st) >= self.max_states:
                 st.pop(0)
             st.append((date, value))
     
-    def _checkPTSL(self, oper, interval, possibleStates, currentStates):
+    def _checkPTSL(self, currdate, oper, interval, possibleStates, currentStates):
         hi, lo, gap = interval
         if oper == 'F':
-            validStates = [(date, value) for (date, value) in currentStates if value in possibleStates]
+            validStates = [(sec_diff(date, currdate), value) for (date, value) in currentStates if value in possibleStates]
             for date, value in validStates:
                 if date <= hi and date >= lo:
                     return True  
+            return False 
 
         elif oper == 'G':
             satisfied = True 
             first_idx = -1 #first occurence of the index greater or equal date range. i.e what the device is like before date range
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
-                if date >= lo and date <= hi:
+                datediff = sec_diff(date, currdate)
+                if datediff >= lo and datediff <= hi:
                     if first_idx < 0:
                         first_idx = i 
                     satisfied = satisfied and value in possibleStates
+                if first_idx < 0 and i > 0:
+                    if datediff > hi:
+                        first_idx = i+1
+                    else:
+                        first_idx = i 
             if first_idx < 0:
                 return False #we have no idea what happens within date range
             elif first_idx == 0:
@@ -75,11 +82,13 @@ class MonitorRules():
         elif oper == 'FG':
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
-                if date <= hi and date >= lo:
+                datediff = sec_diff(date, currdate)
+                if datediff <= hi and datediff >= lo:
                     j = i+1 
                     while j < len(currentStates):
                         t_date, t_value = currentStates[j]
-                        if date - t_date > gap:
+                        t_datediff = sec_diff(t_date, currdate)
+                        if datediff - t_datediff > gap:
                             return True 
                         else:
                             if t_value not in possibleStates:
@@ -89,7 +98,7 @@ class MonitorRules():
 
         else: #GF case 
             possibleIntervals = [(x, x+gap) for x in range(lo, hi, 1)] #we need 1 satisfying state change for each of these intervals
-            validStates = [(date, value) for (date, value) in currentStates if value in possibleStates]
+            validStates = [(sec_diff(date, currdate), value) for (date, value) in currentStates if value in possibleStates]
             for lo_int, hi_int in possibleIntervals:
                 hasSatisfied = False
                 for date, value in validStates:
@@ -100,25 +109,28 @@ class MonitorRules():
                     return False 
             return True 
 
-    def _checkOneRule(self, rule):
+    def _checkOneRule(self, rule, currdate):
         satisfied = True 
-        for keyname, oper, ineq, intval, stateList in rule: 
+        for keyname, oper, _ineq, intval, stateList in rule: 
             parseName = keyname.rsplit('_', 1)
             dname, dstate = parseName[0], parseName[1]
             statedict = self.deviceStates[dname]
             if dstate not in statedict:
                 return False #we don't know the device state, so we can't infer anything
-            satisfied = satisfied and self._checkPTSL(oper, intval, stateList, statedict[dstate])
+            satisfied = satisfied and self._checkPTSL(currdate, oper, intval, stateList, statedict[dstate])
+        return satisfied
 
     def _checkRules(self, currChg):
-        _currdate, currdevice, currState, currValue = currChg
+        currdate, currdevice, currState, currValue = currChg
         keyname = "{0}_{1}".format(currdevice, currState)
+        if keyname not in self.rules:
+            return True, currValue #no rules about this device, we can just continue
         ruledict = self.rules[keyname]
         keys = [key for key in ruledict.keys() if key != currValue]
         #we only need to worry about the rules that does not match curr value being satisfied
         for key in keys:
             for rules in ruledict[key]:
-                if self._checkOneRule(rules):
+                if self._checkOneRule(rules, currdate):
                     return False, key #the device should be in this state instead 
         return True, currValue
 
@@ -131,11 +143,15 @@ class MonitorRules():
 
             Note: for stateChgs, the states should be inserted in time order for each device
         '''
-        currdate, _currdevice, _currState, currValue = currChg
+        currdate, currdevice, currState, currValue = currChg
         for date, device, state, value in stateChgs:
-            date_t = sec_diff(date, currdate)
-            self.updateState(date_t, device, state, value)
+            if device == 'Virtual Switch 2':
+                print("date: {0}, currdate: {1}, value:{2}".format(date, currdate, value))
+            #date_t = sec_diff(date, currdate)
+            self.updateState(date, device, state, value)
         
+        self.updateState(currdate, currdevice, currState, currValue)
+
         boolresult, shouldstate = self._checkRules(currChg)
         if boolresult:
             #for debugging

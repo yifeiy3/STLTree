@@ -63,11 +63,12 @@ def getRule(T, classdict, cap):
         T = T.parent
     return s 
 
-def convertRules(error_threshold = 0.05, cap = 10):
+def convertRules(cdict, error_threshold = 0.05, cap = 10):
     '''
         for a model that we learned device state to be A when B happens, we add a rule dictionary that
         says device should be in the specified state when B happens 
 
+        @param: cdict: the classdict used to train our model
         @param: error_threshold: only rules with confidence higher than this will be considered.
         @param: cap: the interval period we used to divide our dataset during training.
 
@@ -77,12 +78,6 @@ def convertRules(error_threshold = 0.05, cap = 10):
         We trigger the rule if all of the rule condition is satisfied in the list, and we change the device
         state if at least 1 of the rules is satisfied.
     '''
-    cdict = {}
-    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-        cdict = pickle.load(dictfile)
-        print(cdict)
-    if not cdict:
-        raise Exception("Learned class dict not found")
 
     parsedict = {}
     devices = cdict.keys()
@@ -103,5 +98,3 @@ def convertRules(error_threshold = 0.05, cap = 10):
         parsedict[device] = ruledict
 
     return parsedict
-
-print(convertRules()['Virtual Switch 2_switch']['off'][0])

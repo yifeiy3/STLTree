@@ -40,3 +40,21 @@ class Monitor():
     def getHomeMode(self):
         param = {"function":"mode"}
         return self._retrieveInfo(param)
+
+    def modifyState(self, thing_id, stateName, stateValue):
+        url = "https://api.smartthings.com/v1/devices/{0}/commands".format(thing_id)
+        headers = {"Authorization":"Bearer {0}".format(self._key), "content-type" : "application/json","accept" : "application/json"}
+        postdata = {
+            "commands": [
+                {
+                    "component":"main",
+                    "capability":stateName,
+                    "command":"lock",
+                    "arguments":[]
+                }
+            ]
+        }
+        res = requests.post(url, json=postdata, headers = headers)
+        print(json.dumps(postdata))
+        print("request status code: {0}".format(res.status_code))
+        print("request result: {0}".format(res.json()))
