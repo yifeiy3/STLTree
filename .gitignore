@@ -7,9 +7,11 @@ Model/__pycache__/
 Model/DataProcess/__pycache__/
 *.csv
 *.log 
+*.txt
 ModelsNoSTL/__pycache__/
 ModelsNoSTL/logs/
 Samsung/__pycache__/
+geckodriver.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

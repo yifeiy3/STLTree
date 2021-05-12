@@ -1,5 +1,7 @@
 import pickle 
 from Model.Prim import FLPrimitives, SLPrimitives, Primitives, negateIneq
+from UserDefinedRules.parseUserRules import parse 
+import itertools
 
 '''
     This program parses the rules learned from our STLTree model into a dictionary
@@ -36,6 +38,11 @@ def findPossibleStates(statedict, idx, ineq):
         return [statedict[i] for i in statedict.keys() if int(i) <= idx]
     
 def getRule(T, classdict, cap):
+    '''
+        Each rule is 5 tuple of:
+        (Device Name, PTSL type, ineq, [from last x seconds, to last x seconds, duration], satisfyingStates)
+        The list comes in "And", everything need to be satisfied.
+    '''
     s = []
     if T is None:
         return s 
@@ -63,7 +70,7 @@ def getRule(T, classdict, cap):
         T = T.parent
     return s 
 
-def convertRules(cdict, error_threshold = 0.05, cap = 10):
+def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
     '''
         for a model that we learned device state to be A when B happens, we add a rule dictionary that
         says device should be in the specified state when B happens 
@@ -71,6 +78,7 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10):
         @param: cdict: the classdict used to train our model
         @param: error_threshold: only rules with confidence higher than this will be considered.
         @param: cap: the interval period we used to divide our dataset during training.
+        @param: user_defined: A file describing user defined rules that we would like to be added to the dict
 
         @return map each device to a list of rules, each rule is a list of 4 tuple condition of
         (deviceName, PTSL_type, inequality, time_interval, possibleStates for the rule)
@@ -82,7 +90,9 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10):
     parsedict = {}
     devices = cdict.keys()
 
+    #STL tree defined rules
     for device in devices:
+        #note: device = deviceName_deviceState
         T = None 
         try: 
             with open("LearnedModel/treemodel/{0}.pkl".format(device), 'rb') as inmodel:
@@ -97,4 +107,59 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10):
                 ruledict[cdict[device][predclass]].append(s)
         parsedict[device] = ruledict
 
+    if user_defined:
+        userRuleList = convertUserDefinedRules(user_defined)
+        for device, dontState, userRule in userRuleList:
+            if device in parsedict.keys():
+                if dontState in parsedict[device].keys():
+                    parsedict[device][dontState].append(userRule)
+                else:
+                    parsedict[device][dontState] = [userRule]
+            else:
+                parsedict[device] = {dontState : userRule}
+                
     return parsedict
+
+def convertUserDefinedRules(userfile):
+
+    def convertTime(timeduration, timeUnit):
+        if timeUnit == 'SECONDS':
+            return int(timeduration)
+        elif timeUnit == 'MINUTES':
+            return 60 * int(timeduration)
+        else: #hours
+            return 3600 * int(timeduration)
+
+    ruleList = []
+    with open(userfile, 'r') as rulefile:
+        for rules in rulefile:
+            req, cond = parse(rules)
+            #by parse, precond = (deviceMethod, device)
+            #timeprecond = (Time duration, Time unit)
+            precond, timeprecond = req 
+            device, dontstate = precond 
+            timedur, timeu = timeprecond
+            afterTime = convertTime(timedur, timeu) #AFTER xxx seconds 
+
+            #obtain cartisian product of each item in cond, since they occur in 'or' relation within each item,
+            #and between items give and relation
+            allrulecombs = list(itertools.product(*cond))
+            for items in allrulecombs:
+                individualRuleList = []
+                for ruletuples in items:
+                    deviceInfo, timeInfo = ruletuples
+                    deviceName = deviceInfo[1] + '_' + deviceInfo[0] #format: deviceName_deviceState
+                    if timeInfo[2] == 'FG':
+                        secondaryTime, primaryTime = timeInfo[0].split('+')
+                        secondaryDur, primaryDur = timeInfo[1].split('+')
+                        durTimeSecondary = convertTime(secondaryTime, secondaryDur)
+                        durTimePrimary = convertTime(primaryTime, primaryDur)
+                        timeBound = (afterTime + durTimePrimary, afterTime, durTimeSecondary)
+                        individualRuleList.append((deviceName, timeInfo[2], '=', timeBound, [deviceInfo[2]]))
+                    else:
+                        durTime = convertTime(timeInfo[0], timeInfo[1])
+                        lb = afterTime + durTime
+                        timeBound = (lb, afterTime, -1)
+                        individualRuleList.append((deviceName, timeInfo[2], '=', timeBound, [deviceInfo[2]]))
+            ruleList.append((device, dontstate, individualRuleList))
+    return ruleList

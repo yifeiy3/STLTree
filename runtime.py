@@ -74,9 +74,11 @@ if __name__ == "__main__":
     if not cdict:
         raise Exception("Learned class dict not found")
 
-    #ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10)
+    ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined='UserDefinedRules/rule.txt')
+    #print(ruledict)
+    #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
-    ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'FG', '<=', (5, 3, 2), ['off'])]]}}
+    #ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'FG', '<=', (5, 3, 2), ['off'])]]}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")
