@@ -3,13 +3,14 @@ from urllib.parse import urlparse, parse_qs
 from ParseRules import convertRules
 from MonitorRules import MonitorRules
 from Samsung.getDeviceInfo import Monitor
+from capabilities import CAPABILITY_TO_COMMAND_DICT
 import argparse
 import pickle 
 
 hostName = "192.168.1.107"
 serverPort = 10001
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
-APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/29b89160-cf6b-470d-b3e6-c524a48cd124"
+APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/54017165-5332-4a80-8e93-b23dc7d5af78"
 
 class MyServer(BaseHTTPRequestHandler):
     def __init__(self, RuleMonitor, DeviceMonitor, devicedict, important, *args):
@@ -37,21 +38,20 @@ class MyServer(BaseHTTPRequestHandler):
                     for res in laststates:
                         stateChgs.append((res['date'], devices, res['state'], res['value']))
 
-        valid, should = self.rm.checkViolation(currentquery, stateChgs=stateChgs)
+        #TODO: think of a way to deal with anticipated changes for do rules.
+        valid, should, antChgs = self.rm.checkViolation(currentquery, stateChgs=stateChgs)
         print("{0}, {1}".format(valid, should))
         if not valid:
-            # device = query['device'][0]
-            # deviceid = devicedict[device][0]
-            # self.dm.modifyState(deviceid, query['state'][0], 'lock')
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes("{0}".format(should), "utf-8"))
-        else:   
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes("good", "utf-8"))
+            device = query['device'][0]
+            deviceid = devicedict[device][0]
+            #get the command corresponding to state and value that the device should be.
+            stateChgCmd = CAPABILITY_TO_COMMAND_DICT[currentquery[2]][currentquery[3]]
+            self.dm.changeDeviceState(deviceid, device, stateChgCmd)
+               
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(bytes("event received with no violation set to {0}".format(valid), "utf-8"))
 
 class my_http_server:
     def __init__(self, rm, dm, deviceids, important):

@@ -1,6 +1,7 @@
 import pickle 
 from Model.Prim import FLPrimitives, SLPrimitives, Primitives, negateIneq
 from UserDefinedRules.parseUserRules import parse 
+from dictUtil import addOrAppendDepth2
 import itertools
 
 '''
@@ -36,7 +37,7 @@ def findPossibleStates(statedict, idx, ineq):
         return [statedict[i] for i in statedict.keys() if int(i) >= idx]
     else:
         return [statedict[i] for i in statedict.keys() if int(i) <= idx]
-    
+
 def getRule(T, classdict, cap):
     '''
         Each rule is 5 tuple of:
@@ -69,6 +70,38 @@ def getRule(T, classdict, cap):
             s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq)))
         T = T.parent
     return s 
+
+def convertDoRules(parsedDict):
+    '''
+        Given a parsed rule dict, we want to convert to another dictionary that is easy for processing do rules,
+        the dictionary will be, for a devic_state ds change to value v
+        d[ds][v] = ruledict, where
+        ruledict[device][newValue] = set of rules associates with changing s to v that can change our device to newValue
+    '''
+    d = {}
+
+    #initialize d with mapping to ruledict, note parseDict should have all devices and their corresponding states as keys already
+    for device in parsedDict.keys():
+        d[device] = {}
+        for newStateValues in parsedDict[device].keys():
+            d[device][newStateValues] = {}
+    
+    for device in parsedDict.keys():
+        for newStateValues in parsedDict[device].keys():
+            allValueRules = parsedDict[device][newStateValues]
+            #a list of rules, each rule is a list of 5 tuple with "and" relation, described in getRule above.
+            for individualRule in allValueRules:
+                for clause in individualRule:
+                    deviceName, _tp, _ineq, _ti, possibleStates = clause
+                    for eachState in possibleStates:
+                        ruledict = {}
+                        try:
+                            ruledict = d[deviceName][eachState]
+                        except KeyError:
+                            print("Error found with d: {0} \n on device: {1}, newStateValues: {2}".format(d, device, newStateValues))
+                        addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
+    
+    return d 
 
 def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
     '''
@@ -109,14 +142,8 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
 
     if user_defined:
         userRuleList = convertUserDefinedRules(user_defined)
-        for device, dontState, userRule in userRuleList:
-            if device in parsedict.keys():
-                if dontState in parsedict[device].keys():
-                    parsedict[device][dontState].append(userRule)
-                else:
-                    parsedict[device][dontState] = [userRule]
-            else:
-                parsedict[device] = {dontState : userRule}
+        for device, dontStateVal, userRule in userRuleList:
+            addOrAppendDepth2(parsedict, device, dontStateVal, userRule)
                 
     return parsedict
 
@@ -137,7 +164,7 @@ def convertUserDefinedRules(userfile):
             #by parse, precond = (deviceMethod, device)
             #timeprecond = (Time duration, Time unit)
             precond, timeprecond = req 
-            device, dontstate = precond 
+            device, dontstateVal = precond 
             timedur, timeu = timeprecond
             afterTime = convertTime(timedur, timeu) #AFTER xxx seconds 
 
@@ -161,5 +188,15 @@ def convertUserDefinedRules(userfile):
                         lb = afterTime + durTime
                         timeBound = (lb, afterTime, -1)
                         individualRuleList.append((deviceName, timeInfo[2], '=', timeBound, [deviceInfo[2]]))
-            ruleList.append((device, dontstate, individualRuleList))
+            ruleList.append((device, dontstateVal, individualRuleList))
     return ruleList
+
+# if __name__ == '__main__':
+#     cdict = {}
+#     with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+#         cdict = pickle.load(dictfile)
+#     doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
+#     for keys in doDict.keys():
+#         print("key: {0}".format(keys))
+#         print(doDict[keys])
+#         print('_____________________________________________')

@@ -11,6 +11,14 @@ class Monitor():
         res = requests.get(url, headers = headers, params = param)
         return res.json()
     
+    def changeDeviceState(self, deviceId, deviceName, command):
+        url = self._endpoint + "/monitorControl/{0}/{1}".format(deviceId, command)
+        headers = {"Authorization":"Bearer {0}".format(self._key)}
+        param = {"id": deviceId,
+                 "cmd": command,
+                 "name": deviceName}
+        _res = requests.get(url, headers = headers, params = param)
+
     def getThings(self, thing):
         param = {"function":"things",
             "kind":thing}
@@ -40,21 +48,3 @@ class Monitor():
     def getHomeMode(self):
         param = {"function":"mode"}
         return self._retrieveInfo(param)
-
-    def modifyState(self, thing_id, stateName, stateValue):
-        url = "https://api.smartthings.com/v1/devices/{0}/commands".format(thing_id)
-        headers = {"Authorization":"Bearer {0}".format(self._key), "content-type" : "application/json","accept" : "application/json"}
-        postdata = {
-            "commands": [
-                {
-                    "component":"main",
-                    "capability":stateName,
-                    "command":"lock",
-                    "arguments":[]
-                }
-            ]
-        }
-        res = requests.post(url, json=postdata, headers = headers)
-        print(json.dumps(postdata))
-        print("request status code: {0}".format(res.status_code))
-        print("request result: {0}".format(res.json()))

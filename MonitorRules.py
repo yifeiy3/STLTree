@@ -1,3 +1,4 @@
+from ParseRules import convertDoRules
 
 def sec_diff(date_ref, date):
     '''
@@ -22,13 +23,16 @@ def sec_diff(date_ref, date):
     return day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff
 
 class MonitorRules():
-    def __init__(self, rules, devices, max_states = 5):
+    def __init__(self, rules, devices, max_states = 5, do=True):
         '''
             @param: max_states: maximum number of states for each device our monitor stores
+            @param: whether we track for DO rules, that is, if a rule condition gets satisfied but no device change has
+            happened, the monitor automatically commands the device to change after a fixed amount of time.
         '''
         self.devices = devices 
         self.deviceStates = self._initializeState(devices)
         self.rules = rules #dont rules received from ParseRules.py 
+        self.doRules = convertDoRules(rules) if do else None
         self.max_states = max_states
     
     def _initializeState(self, devices):
@@ -46,8 +50,12 @@ class MonitorRules():
                 st.pop(0)
             st.append((date, value))
     
-    def _checkPTSL(self, currdate, oper, interval, possibleStates, currentStates):
+    def _checkPTSL(self, currdate, oper, interval, possibleStates, currentStates, offset):
         hi, lo, gap = interval
+        offsethi, offsetlo = interval 
+        lo = lo + offsetlo 
+        hi = min(hi + offsetlo, lo + offsethi)
+
         if oper == 'F':
             validStates = [(sec_diff(date, currdate), value) for (date, value) in currentStates if value in possibleStates]
             for date, value in validStates:
@@ -112,7 +120,14 @@ class MonitorRules():
                     return False 
             return True 
 
-    def _checkOneRule(self, rule, currdate):
+    def _checkOneRule(self, rule, currdate, offset=(0,0)):
+        '''
+            @optional param: offset for checking do rules, a tuple of (offsethi, offsetlo) for the interval of the rule
+            for current action. To check if the DO rule is satisfied, we need to shift the PTSL to the time
+            frame corresponding to when the part for the rule respective to the current action is satisfied.
+
+            The shift would be (hi, lo) ----> (min(hi + offsetlo, lo + offsethi), lo + offsetlo)
+        '''
         satisfied = True 
         for keyname, oper, _ineq, intval, stateList in rule: 
             parseName = keyname.rsplit('_', 1)
@@ -120,7 +135,7 @@ class MonitorRules():
             statedict = self.deviceStates[dname]
             if dstate not in statedict:
                 return False #we don't know the device state, so we can't infer anything
-            satisfied = satisfied and self._checkPTSL(currdate, oper, intval, stateList, statedict[dstate])
+            satisfied = satisfied and self._checkPTSL(currdate, oper, intval, stateList, statedict[dstate], offset)
         return satisfied
 
     def _checkRules(self, currChg):
@@ -137,6 +152,46 @@ class MonitorRules():
                     return False, key #the device should be in this state instead 
         return True, currValue
 
+    def _checkDoRules(self, currChg, doRuleDict):
+        
+        def checkDoRuleOnce(stateDict, currentDate, device):
+            '''
+                @param stateDict = ruledict[device]
+                @param currentDate = currDate
+                @param device = device_state name as in key of the dictionary
+
+                returns (Rule satisfied?, State Value it should change to, # of seconds needed to perform this action
+                if the action has not been done)
+            '''
+            offset = (0, 0)
+            for newStateValues in stateDict.keys():
+                for rules in stateDict[newStateValues]:
+                    #we first iterate through the rules to find the offset interval.
+                    for i in range(len(rules)): 
+                        keyname, _oper, _ineq, intval, _stateList = rules[i]
+                        if keyname == device:
+                            #(hi, lo)
+                            offset = (intval[0], intval[1])
+                            rules.pop(i) #we don't need to check validity of the current action itself.
+                            break
+                    if self._checkOneRule(rules, currentDate, offset=offset):
+                        return True, newStateValues, offset[0]
+            return False, '', 0
+                        
+        currdate, currdevice, currState, currValue = currChg 
+        keyname = "{0}_{1}".format(currdevice, currState)
+        if keyname not in self.doRules:
+            return True, currValue #no rules about this device and this state, we can just continue
+        ruledict = self.doRules[keyname][currValue]
+        
+        anticipatedChgs = {}
+        for device in ruledict.keys():
+            tag, newStateValue, timedelay = checkDoRuleOnce(ruledict[device], currdate, keyname)
+            if tag:
+                anticipatedChgs[timedelay] = (device, newStateValue)
+        #returns a dictionary that maps after x time, the device should change to newStateValue according to DO rule.
+        return anticipatedChgs
+
     def checkViolation(self, currChg, stateChgs = []):
         ''' 
             @param: the current chg we would like to analyze
@@ -148,8 +203,6 @@ class MonitorRules():
         '''
         currdate, currdevice, currState, currValue = currChg
         for date, device, state, value in stateChgs:
-            if device == 'Virtual Switch 2':
-                print("date: {0}, currdate: {1}, value:{2}".format(date, currdate, value))
             #date_t = sec_diff(date, currdate)
             self.updateState(date, device, state, value)
         
@@ -161,4 +214,9 @@ class MonitorRules():
             if shouldstate != currValue:
                 print("This should not happen with shouldstate: {0}, currValue: {1}".format(shouldstate, currValue))
                 raise NotImplementedError
-        return boolresult, shouldstate
+        
+        anticipatedChgs = {}
+        if self.doRules:
+            anticipatedChgs = self._checkDoRules(currChg, self.doRules)
+        
+        return boolresult, shouldstate, anticipatedChgs
