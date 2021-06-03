@@ -83,28 +83,7 @@ def deviceChangeHandler(evt){
     try{
         httpGet(params){resp -> 
             log.debug "response data: ${resp.data}"
-            if(resp.data != 'good'){
-            	switch(resp.data){
-                	case 'locked':
-                    	evt.getDevice().lock();
-                        break;
-					case 'unlocked':
-                    	evt.getDevice().unlock();
-                        break;
-                    case 'on':
-                    	evt.getDevice().on();
-                        break;
-                    case 'off':
-                    	evt.getDevice().off();
-                        break;
-                    case 'siren':
-                    	evt.getDevice().siren();
-                        break
-					default:
-                    	log.debug "unable to process request: ${resp.data}"
-            	}
-        	}
-      }
+        } 
     } catch (e){
         log.debug(e)
     }

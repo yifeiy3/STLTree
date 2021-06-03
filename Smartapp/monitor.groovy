@@ -120,6 +120,11 @@ mappings {
             GET: "handlerURL"
         ]
     }
+    path("/monitorControl"){
+    	action: [
+        	GET: "monitorURL"
+        ]
+   }
 }
 
 def installed() {
@@ -207,6 +212,18 @@ def getThing(id){
     getThings("all").findResult {
         it.id == id ? it : null
     }
+}
+
+/**
+ * Change device state based on $params.id and $params.cmd
+ */
+def monitorURL() {
+	log.debug "we got here"
+	def devid = params.id
+    def cmd = params.cmd
+    def device = getThing(devid)
+    log.debug "device $params.name 's state has been changed by $cmd command."
+    device."$cmd"()
 }
 
 /**
