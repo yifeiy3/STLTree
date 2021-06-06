@@ -14,3 +14,5 @@ Rules
     Switch 2 off -----> Smoke Alarm off 
 
 Only Smoke Alarm can not randomly change state.
+
+Selenium generate data using: householdEnvironment.groovy
