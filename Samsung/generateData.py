@@ -34,13 +34,13 @@ def initialState(length):
 monitorid = "9793402f-fcb7-42af-8461-da541b539f01" #arbitrary id for a device called monitor
 stdattrribute = IgnoredAttributes.IgnoredAttributeList
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
-APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/29b89160-cf6b-470d-b3e6-c524a48cd124"
+APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/54017165-5332-4a80-8e93-b23dc7d5af78"
 
 md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(hours=13) #last 20 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes=85) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -135,6 +135,6 @@ df = pd.DataFrame(datalist, index=the_timestamps, columns = deviceCol)
 drop_cols = [deviceCol[i] for i in range(len(deviceCol)) if not hasInfo[i]]
 print("dropped columns: {0}".format(drop_cols))
 df = df.drop(drop_cols, axis = 1)
-df.to_csv("event3.csv")
+df.to_csv("benchmark3.csv")
 
 

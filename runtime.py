@@ -4,6 +4,8 @@ from ParseRules import convertRules
 from MonitorRules import MonitorRules
 from Samsung.getDeviceInfo import Monitor
 from capabilities import CAPABILITY_TO_COMMAND_DICT
+from scheduling import Scheduler
+
 import argparse
 import pickle 
 
@@ -22,6 +24,7 @@ class MyServer(BaseHTTPRequestHandler):
         self.dm = DeviceMonitor
         self.devicedict = devicedict
         self.important = important
+        self.scheduler = Scheduler(self.dm, self.devicedict, self.rm) #scheduler to change device states according to DO rules
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def do_GET(self):
@@ -38,9 +41,10 @@ class MyServer(BaseHTTPRequestHandler):
                     for res in laststates:
                         stateChgs.append((res['date'], devices, res['state'], res['value']))
 
-        #TODO: think of a way to deal with anticipated changes for do rules.
         valid, should, antChgs = self.rm.checkViolation(currentquery, stateChgs=stateChgs)
         print("{0}, {1}".format(valid, should))
+
+        #handling DONT rules
         if not valid:
             device = query['device'][0]
             deviceid = devicedict[device][0]
@@ -52,6 +56,9 @@ class MyServer(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(bytes("event received with no violation set to {0}".format(valid), "utf-8"))
+
+        #handling DO rules
+        self.scheduler.scheduleDoRules(antChgs)
 
 class my_http_server:
     def __init__(self, rm, dm, deviceids, important):

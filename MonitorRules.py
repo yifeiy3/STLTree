@@ -1,4 +1,6 @@
 from ParseRules import convertDoRules
+import datetime
+import time 
 
 def sec_diff(date_ref, date):
     '''
@@ -400,17 +402,24 @@ class MonitorRules():
                     return False, -1 #there is no wait time that satisfies all the rules, so the rule is not satisfied.
 
     def _checkDoRules(self, currChg, doRuleDict):
-        
+        '''
+            @param doRuleDict d, where
+            d[device_state][value] = ruledict, where
+            ruledict[device'][newValue] = set of rules associates with changing device's state to value
+            that can change our device' to newValue
+        '''
+
         def checkDoRuleOnce(stateDict, currentDate, device):
             '''
                 @param stateDict = ruledict[device]
                 @param currentDate = currDate
                 @param device = device_state name as in key of the dictionary
 
-                returns (Rule satisfied?, State Value it should change to, # of seconds needed to perform this action
+                returns list of (Rule satisfied?, State Value it should change to, # of seconds needed to perform this action
                 if the action has not been done)
             '''
             offset = (0, 0)
+            recordedChgs = []
             for newStateValues in stateDict.keys():
                 for rules in stateDict[newStateValues]:
                     #we first iterate through the rules to find the offset interval.
@@ -423,8 +432,8 @@ class MonitorRules():
                             break
                     satisfactory, timeWait = self._checkOneDoRule(rules, currentDate, offset)
                     if satisfactory:
-                        return True, newStateValues, timeWait
-            return False, '', -1
+                        recordedChgs.append((True, newStateValues, timeWait, rules))
+            return recordedChgs
                         
         currdate, currdevice, currState, currValue = currChg 
         keyname = "{0}_{1}".format(currdevice, currState)
@@ -434,9 +443,8 @@ class MonitorRules():
         
         anticipatedChgs = {}
         for device in ruledict.keys():
-            tag, newStateValue, timedelay = checkDoRuleOnce(ruledict[device], currdate, keyname)
-            if tag:
-                anticipatedChgs[timedelay] = (device, newStateValue)
+            for _tag, newStateValue, timedelay, theRule in checkDoRuleOnce(ruledict[device], currdate, keyname):
+                anticipatedChgs[timedelay] = (device, newStateValue, theRule) #this device is also a device_state tuple.
         #returns a dictionary that maps after x time, the device should change to newStateValue according to DO rule.
         return anticipatedChgs
 
@@ -468,3 +476,19 @@ class MonitorRules():
             anticipatedChgs = self._checkDoRules(currChg, self.doRules)
         
         return boolresult, shouldstate, anticipatedChgs
+    
+    def checkCommand(self, dname, dstate, dvalue, rulestr):
+        '''
+            As a final check for the rule before it is sent to Samsung Smartthings hub to change device state,
+            this fuction does:
+                1. Check whether preconditions for the rulestr is still satisfied
+                2. Check if the device still have changed to the desired value
+        '''
+        currDate = datetime.datetime.now(datetime.timezone.utc) #Smartthings uses UTC as time reference
+        if self._checkOneRule(rulestr, currDate):
+            time.sleep(1) #give a 1 second gap for device to change state before we check step 2.
+            
+            _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
+            return currValue != dvalue 
+            
+        return False 

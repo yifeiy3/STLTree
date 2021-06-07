@@ -74,7 +74,7 @@ def getRule(T, classdict, cap):
 def convertDoRules(parsedDict):
     '''
         Given a parsed rule dict, we want to convert to another dictionary that is easy for processing do rules,
-        the dictionary will be, for a devic_state ds change to value v
+        the dictionary will be, for a device_state ds change to value v
         d[ds][v] = ruledict, where
         ruledict[device][newValue] = set of rules associates with changing s to v that can change our device to newValue
     '''
