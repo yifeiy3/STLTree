@@ -14,9 +14,7 @@ The size of data generated is determined by the number of iterations described i
 To generate data with Samsung Smartthings devices, you would need to
 form a Smart environment on Samsung hub: https://graph.api.smartthings.com/ide/apps
 
-The device data can be either directly simulated, or generated with an automated framework with Selenium. An example implementation
-is done under `Samsung/scriptedEnvir.py` and `Samsung/scriptedEnvir2.py` corresponding to the two environments under the `Samsung` 
-directory. The Smartapps used for the two data generation can be found in `Smartapp/Envr1` and `Smartapp/Envr2`.
+The device data can be either directly simulated, or generated with an automated framework with Selenium. The Smartapps used for the three data generation can be found in `Smartapp/Envr1`,`Smartapp/Envr2`, and `Smartapp/Envr3`.
 
 To obtain the simulated data, run:
 ```
