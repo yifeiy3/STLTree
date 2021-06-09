@@ -40,7 +40,7 @@ md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(minutes=150) #last 20 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes=300) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -137,6 +137,6 @@ df = pd.DataFrame(datalist, index=the_timestamps, columns = deviceCol)
 drop_cols = [deviceCol[i] for i in range(len(deviceCol)) if not hasInfo[i]]
 print("dropped columns: {0}".format(drop_cols))
 df = df.drop(drop_cols, axis = 1)
-df.to_csv("benchmark1.csv")
+df.to_csv("benchmark7.csv")
 
 

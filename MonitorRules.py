@@ -2,6 +2,7 @@ from ParseRules import convertDoRules
 import datetime
 import time 
 import functools
+import copy
 
 def sec_diff(date_ref, date):
     '''
@@ -463,21 +464,22 @@ class MonitorRules():
                 returns list of (Rule satisfied?, State Value it should change to, # of seconds needed to perform this action
                 if the action has not been done)
             '''
-            offset = (0, 0)
+            offset = (0, 0, -1, 'G') #some arbitrary start value
             recordedChgs = []
             for newStateValues in stateDict.keys():
                 for rules in stateDict[newStateValues]:
                     #we first iterate through the rules to find the offset interval.
-                    for i in range(len(rules)): 
-                        keyname, oper, _ineq, intval, _stateList = rules[i]
+                    temprule = copy.copy(rules)
+                    for i in range(len(temprule)): 
+                        keyname, oper, _ineq, intval, _stateList = temprule[i]
                         if keyname == device:
                             #(hi, lo)
                             offset = (intval[0], intval[1], intval[2], oper)
-                            rules.pop(i) #we don't need to check validity of the current action itself.
+                            temprule.pop(i) #we don't need to check validity of the current action itself.
                             break
-                    satisfactory, timeWait = self._checkOneDoRule(rules, currentDate, offset)
+                    satisfactory, timeWait = self._checkOneDoRule(temprule, currentDate, offset)
                     if satisfactory:
-                        recordedChgs.append((True, newStateValues, timeWait, rules))
+                        recordedChgs.append((True, newStateValues, timeWait, temprule))
             return recordedChgs
                         
         currdate, currdevice, currState, currValue = currChg 
@@ -533,7 +535,10 @@ class MonitorRules():
         if self._checkOneRule(rulestr, currDate):
             time.sleep(1) #give a 1 second gap for device to change state before we check step 2.
             
-            _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
-            return currValue != dvalue 
+            try:
+                _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
+                return currValue != dvalue 
+            except KeyError: #no state change has happened.
+                return True
             
         return False 

@@ -85,7 +85,12 @@ if __name__ == "__main__":
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
-    ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'G', '<=', (5, 3, 2), ['off'])]]}}
+    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']), ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
+                                     [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'])],
+                                     ],
+                              'unlocked': []},
+            'Virtual Switch 2_switch': {'on': [], 'off': []},
+            'Virtual Switch1_switch': {'on': [], 'off': []}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")
@@ -106,7 +111,7 @@ if __name__ == "__main__":
             alldevices.append(device["name"])
             devicedict[device["name"]] = (device["id"], tempdict[device["name"]])
 
-    md_rules = MonitorRules(ruledict, alldevices)
+    md_rules = MonitorRules(ruledict, alldevices, max_states=5, do=False)
     webServer = my_http_server(md_rules, md, devicedict, args.important)
     print("Server started with ip http://{0}:{1}".format(hostName, serverPort))
 
