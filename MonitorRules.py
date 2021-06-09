@@ -1,6 +1,7 @@
 from ParseRules import convertDoRules
 import datetime
 import time 
+import functools
 
 def sec_diff(date_ref, date):
     '''
@@ -65,7 +66,7 @@ class MonitorRules():
         elif oper == 'G':
             satisfied = True 
             first_idx = -1 #first occurence of the index greater or equal date range. i.e what the device is like before date range
-            last_idx_outside_range = -1 #last idx happens before hi, used when no state change has happened within the data range
+            last_idx_outside_range = -2 #last idx happens before hi, used when no state change has happened within the data range
             for i in range(len(currentStates)):
                 #Note current states is stored such that the first element is farthest away.
                 date, value = currentStates[i]
@@ -77,7 +78,7 @@ class MonitorRules():
                 if datediff > hi:
                     last_idx_outside_range = i 
 
-            first_idx = last_idx_outside_range if first_idx < 0 else first_idx
+            first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
 
             if first_idx < 0:
                 return False #we have no idea what happens within date range
@@ -113,7 +114,7 @@ class MonitorRules():
             if ((hi - lo) // gap > self.max_states):
                 #simply not possible
                 return False 
-            possibleIntervals = [(x, x+gap) for x in range(lo, hi, 1)] #we need 1 satisfying state change for each of these intervals
+            possibleIntervals = [(max(x-gap, 0), x) for x in range(lo, hi, 1)] #we need 1 satisfying state change for each of these intervals
             validStates = [(sec_diff(date, currdate), value) for (date, value) in currentStates if value in possibleStates]
             for lo_int, hi_int in possibleIntervals:
                 hasSatisfied = False
@@ -170,8 +171,9 @@ class MonitorRules():
             if oper == 'G': 
                 satisfied = True 
                 first_idx = -1
-                last_idx_outside_range = -1
+                last_idx_outside_range = -2
                 modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
+
                 intvStart = -1
                 startDate = -1
                 satisfyingIntvList = []
@@ -182,42 +184,51 @@ class MonitorRules():
                         if first_idx < 0:
                             first_idx = i 
                         if intvStart < 0 and value in possibleStates:
-                            intvStart = max(offsetlo, lo - date)
+                            #have to wait hi amount of seconds for G.
+                            intvStart = max(offsetlo, hi - datediff)
                             startDate = datediff 
                         elif intvStart >= 0 and value not in possibleStates:
-                            #we need to know that we are in the satisfying state for at least hi - lo + 1 seconds.
-                            duration = (datediff - startDate) - (hi - lo + 1)
-                            if duration > 0:
-                                satisfied = True 
-                                satisfyingIntvList.append((intvStart, intvStart + duration))
+                            print(datediff)
+                            print(startDate)
+                            satisfyingIntvList.append((intvStart, intvStart + (startDate - datediff)))
                             intvStart = -1
                             startDate = -1
-                    if datediff > hi:
+                    if datediff > modifiedintvalhi:
                         last_idx_outside_range = i 
 
-                first_idx = last_idx_outside_range if first_idx < 0 else first_idx
+                first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
+
+                if intvStart >= 0 and intvStart + (hi - lo + 1) <= offsethi: #everything after will be satisfied, append this
+                    satisfied = True
+                    satisfyingIntvList.append((intvStart, offsethi)) #check behavior before the first interval
+
+                firstStart, firstEnd = -1, -1
+                if satisfyingIntvList:
+                    firstStart, firstEnd = satisfyingIntvList[0]
 
                 if first_idx < 0:
                     return False, [] 
-                elif first_idx == 0:
-                    if sec_diff(currentStates[first_idx][0], currdate) >= hi:
-                        return True, [(offsetlo, offsethi)] #always will be satisfied
-                    else:
-                        return False, [] 
+                elif first_idx == 0: #nothing happened before the interval
+                    print("first index = 0, nothing to be done here")
+                elif first_idx == len(currentStates): #nothing happened within the interval
+                    satisfyingIntvList = [(offsetlo, offsethi)]
                 else:
-                    if intvStart >= 0: #everything after will be satisfied, append this
-                        satisfied = True
-                        satisfyingIntvList.append((intvStart, offsethi)) #check behavior before the first interval
                     date, value = currentStates[first_idx - 1]
-                    if value in possibleStates: #then any time before our first interval also works, extend our interval.
-                        if not satisfyingIntvList: #no interval yet, we can wait for as long as we can
-                            return True, [(offsetlo, offsethi)]
-                        else:
-                            _firstIntvlo, firstIntvhi = satisfyingIntvList.pop(0)
-                            if not satisfied:
-                                satisfied = ((hi - lo + 1) <= (firstIntvhi - offsetlo + 1)) #check if this interval satisfies our condition.
-                            satisfyingIntvList.insert(0, (offsetlo, firstIntvhi))
-                    return satisfied, satisfyingIntvList
+                    nextdate, _nextvalue = currentStates[first_idx]
+                    if sec_diff(nextdate, currdate) < modifiedintvallo: #nothing happened within the interval
+                        return satisfied, [(offsetlo, offsethi)]
+                        
+                    if value in possibleStates and nextdate == firstStart: #then any time before our first interval also works, extend our interval.
+                        satisfyingIntvList.pop(0)
+                        satisfyingIntvList.insert(0, (offsetlo, firstEnd))
+
+                reslist = []
+                #for each found interval, we need to know that they have to be at least the size of [lo, hi].
+                for start, end in satisfyingIntvList:
+                    duration = (end - start) - (hi - lo)
+                    if duration >= 0:
+                        reslist.append((start, start + duration))
+                return len(reslist) > 0, reslist
                 
             elif oper == 'F':
                 pStates = [(sec_diff(date, currdate), value) for (date, value) in currentStates]
@@ -229,20 +240,23 @@ class MonitorRules():
                 for date, value in pStates:
                     if date <= modifiedintvalhi and date >= modifiedintvallo:
                         if intvStart < 0 and value in possibleStates:
-                            #we can't wait less than offsetlo, and we have to wait at least lo - date seconds to satisfy rule
-                            intvStart = max(offsetlo, lo - date)
+                            #we have to wait at least lo - date seconds to satisfy rule
+                            intvStart = lo - date
                             startDate = date
                             satisfied = True 
                         elif intvStart >= 0 and value not in possibleStates:
-                            #we can't wait more than (hi - lo + 1) seconds from intvStart, since then the intvStart event won't
+                            #we can't wait more than (hi - lo) seconds from intvStart, since then the intvStart event won't
                             #satisfy our rule anymore.
-                            endpoint = min(intvStart + (hi - lo + 1), intvStart + (date - startDate), offsethi)
-                            satisfyingIntvList.append((intvStart, endpoint))
+                            endpoint = min(intvStart + (hi - lo), intvStart + (startDate - date), offsethi)
+                            if endpoint >= offsetlo:
+                                intvStart = max(offsetlo, intvStart) #we have to wait at least offsetlo seconds
+                                satisfyingIntvList.append((intvStart, endpoint))
                             intvStart = -1
                             startDate = -1
 
                 if intvStart >= 0: #need to handle the last interval, we can't wait more than offsethi seconds.
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo + 1), offsethi)))
+                    intvStart = max(offsetlo, intvStart)
+                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), offsethi)))
                 return satisfied, satisfyingIntvList
             
             elif oper == 'FG':
@@ -259,34 +273,42 @@ class MonitorRules():
                             j = i+1
                             if j >= len(currentStates):
                                 satisfied = True 
-                                intvStart = max(offsetlo, lo - datediff)
+                                intvStart = lo - datediff
                                 startDate = datediff
                             else:
                                 while j < len(currentStates):
-                                    t_date, t_value = currentStates[j]
+                                    t_date, _t_value = currentStates[j]
                                     t_datediff = sec_diff(t_date, currdate)
                                     if intvStart < 0 and datediff - t_datediff > gap:
                                         satisfied = True 
-                                        intvStart = max(offsetlo, lo - datediff)
+                                        intvStart = lo - datediff
                                         startDate = datediff
+                                        break
+                                    j = j+1
                         elif intvStart >= 0 and value not in possibleStates:
                             #we also need to account the time needed for the gap due to second level PSTL here.
-                            endpoint = min(intvStart + (hi - lo + 1), intvStart + (datediff - startDate) - gap, offsethi)
-                            satisfyingIntvList.append((intvStart, endpoint))
+                            endpoint = min(intvStart + (hi - lo), intvStart + (startDate - datediff) - gap, offsethi)
+                            if endpoint >= offsetlo:
+                                intvStart = max(offsetlo, intvStart)
+                                satisfyingIntvList.append((intvStart, endpoint))
                             intvStart = -1
                             startDate = -1
 
                 if intvStart > 0:
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo + 1), offsethi)))
+                    intvStart = max(offsetlo, intvStart)
+                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), offsethi)))
                 return satisfied, satisfyingIntvList
             
             else: #GF case
                 intvStart = -1
                 satisfyingIntvList = []
 
-                for i in range(offsetlo, offsethi, 1):
+                #if i > lo, we cant check for globally all satisfiable since we dont know events yet, can simply skip.
+                rangeend = min(offsethi+1, lo + 1)
 
-                    modifiedhi, modifiedlo = (max(0, hi - i), max(0, lo - i))
+                for i in range(offsetlo, rangeend, 1):
+                    modifiedhi, modifiedlo = (hi-i, lo - i)
+
                     validStates = []
                     for date, value in currentStates[: -1]:
                         datediff = sec_diff(date, currdate)
@@ -307,7 +329,10 @@ class MonitorRules():
                             #any interval happening after will not satisfy our rule since not enough changes for intervals
                         continue
 
-                    possibleIntervals = [(x, x+gap) for x in range(modifiedlo, modifiedhi, 1)]
+                    possibleIntervals = [(max(x-gap, 0), x) for x in range(modifiedlo, modifiedhi+1, 1)]
+
+                    currentlySatisfied = True #whether our current choice of i satisfy the rule
+
                     for lo_int, hi_int in possibleIntervals:
                         hasSatisfied = False
                         for date, value in validStates:
@@ -317,31 +342,54 @@ class MonitorRules():
                         #None of the valid states satisfies our rule
                         if not hasSatisfied:
                             if intvStart >= 0:
-                                satisfyingIntvList.append((intvStart, i))
+                                satisfyingIntvList.append((intvStart, i-1))
                                 intvStart = -1
-                            continue 
+                            currentlySatisfied = False 
+                            break
                     
                     #all intervals have been satisfied.
-                    if intvStart < 0:
+                    if currentlySatisfied and intvStart < 0:
                         intvStart = i 
                         satisfied = True
 
                 if intvStart > 0:
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo + 1), offsethi)))
+                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), rangeend)))
                 return satisfied, satisfyingIntvList
         
-    def _findWaitTime(self, timeIntervals):
+    def _findWaitTime(self, timeIntervals, offsetInfo):
         '''
             Given a list of interval constraint list, check for a wait time that satisfy at least one
             interval constraint for each list.
 
             @param: The time interval constraint list list
+            @param: offsetInfo, used when the rule for current event is either F or FG, and it is the only clause
+                    of the rule. In that case we need to wait for at least offsetlo's seconds.
             @return: A satisfactory wait time, -1 if none found
         '''
+        def compareFn(item1, item2):
+            '''
+                compare an interval tuple, if they have the same timestamp, 'L' is prioritized ahead of 'R'
+            '''
+            if item1[0] == item2[0]:
+                if item1[1] == item2[1]:
+                    return 0
+                elif item1[1] == 'L':
+                    return -1
+                else:
+                    return 1
+            elif item1[0] < item2[0]:
+                return -1
+            else:
+                return 1
+                
         if not timeIntervals:
-            print("Warning: Time interval list is empty, this should not happen")
-            return -1 
-
+            #this happens when only current change is in the rule, so the rule is satisfied trivially
+            #if its F or FG, we return modified offsetLo, if its G or GF, we return modified offsetHi
+            if offsetInfo[3] == 'G' or offsetInfo[3] == 'GF':
+                return offsetInfo[0] + max(0, offsetInfo[2])
+            else:
+                return offsetInfo[1] + max(0, offsetInfo[2])
+        print(timeIntervals)
         #we note each interval with in a list would not overlap by our construction, our goal is simply to check
         #if there is len(timInterval) amount of interval overlap in the provided intervals.
         allIntVals = [item for sublist in timeIntervals for item in sublist] #flattens our list.
@@ -349,7 +397,7 @@ class MonitorRules():
         for intStart, intEnd in allIntVals:
             startFinishList.append((intStart, 'L'))
             startFinishList.append((intEnd, 'R'))
-        sortedIntVals = sorted(startFinishList) 
+        sortedIntVals = sorted(startFinishList, key=functools.cmp_to_key(compareFn)) 
 
         count = 0
         maxcount = 0
@@ -370,7 +418,7 @@ class MonitorRules():
 
     def _checkOneDoRule(self, rule, currdate, offsetInfo):
         '''
-            @optional param: offsetinfo for checking do rules, a tuple of (offsethi, offsetlo, offsetgap, actionType) 
+            @param: offsetinfo for checking do rules, a tuple of (offsethi, offsetlo, offsetgap, actionType) 
             for the interval of the rule for current action. To check if the DO rule is satisfied, we need to shift the PSTL 
             to the timeframe corresponding to when the part for the rule respective to the current action is satisfied.
 
@@ -383,23 +431,20 @@ class MonitorRules():
             dname, dstate = parseName[0], parseName[1]
             statedict = self.deviceStates[dname]
             if dstate not in statedict:
-                return False #we don't know the device state, so we can't infer anything
+                return False, -1 #we don't know the device state, so we can't infer anything
             ruleSatisfied, satisfyingIntval = self._checkPTSLonDO(currdate, oper, intval, stateList, statedict[dstate], offsetInfo)
             satisfied = satisfied and ruleSatisfied
             waitTimeIntvals.append(satisfyingIntval)
 
-        #if it is G or GF rule for our offsetInfo, we know we have to wait offsethi amount of time.
-        if offsetInfo[3] == 'G' or offsetInfo[3] == 'GF': #3rd param is actiontype
-            return satisfied, offsetInfo[0] #0th param is offsethi 
-        else: #otherwise, we have to check there is a satisfying waitTime to satisfy all rules
-            if not satisfied:
-                return False, -1
+        #we have to check there is a satisfying waitTime to satisfy all rules
+        if not satisfied:
+            return False, -1
+        else:
+            satisfyingWaitime = self._findWaitTime(waitTimeIntvals, offsetInfo)
+            if satisfyingWaitime >= 0:
+                return satisfied, satisfyingWaitime
             else:
-                satisfyingWaitime = self._findWaitTime(waitTimeIntvals)
-                if satisfyingWaitime >= 0:
-                    return satisfied, satisfyingWaitime
-                else:
-                    return False, -1 #there is no wait time that satisfies all the rules, so the rule is not satisfied.
+                return False, -1 #there is no wait time that satisfies all the rules, so the rule is not satisfied.
 
     def _checkDoRules(self, currChg, doRuleDict):
         '''

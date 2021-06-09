@@ -40,7 +40,7 @@ md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(minutes=85) #last 20 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes=150) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -55,7 +55,8 @@ for device in devices:
             deviceCol.append(device["name"] + "_" + attribute)
             #print("Attribute Name: {0}".format(attribute))
             states = md.getStates(attribute, device["id"], since=since)
-            print(len(states)) 
+            print(device["name"])
+            print((states)) 
             #for each device, at most 200 states is stored....
             for state in states:
                 statechgs.append((state["date"], device["name"], state["state"], state["value"]))
@@ -64,6 +65,7 @@ if not statechgs:
     raise Exception("We have no data in the environment")
 
 mindate = min(statechgs, key=lambda x: x[0])
+
 for i in range(len(statechgs)):
     try:
         deviceidx = deviceCol.index(statechgs[i][1] + "_" + statechgs[i][2])
@@ -135,6 +137,6 @@ df = pd.DataFrame(datalist, index=the_timestamps, columns = deviceCol)
 drop_cols = [deviceCol[i] for i in range(len(deviceCol)) if not hasInfo[i]]
 print("dropped columns: {0}".format(drop_cols))
 df = df.drop(drop_cols, axis = 1)
-df.to_csv("benchmark3.csv")
+df.to_csv("benchmark1.csv")
 
 

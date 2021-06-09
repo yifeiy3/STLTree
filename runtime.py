@@ -81,11 +81,11 @@ if __name__ == "__main__":
     if not cdict:
         raise Exception("Learned class dict not found")
 
-    ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined='UserDefinedRules/rule.txt')
+    #ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined='UserDefinedRules/rule.txt')
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
-    #ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'FG', '<=', (5, 3, 2), ['off'])]]}}
+    ruledict = {'Door_lock': {'locked':[[('Virtual Switch 2_switch', 'G', '<=', (5, 3, 2), ['off'])]]}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         if device["name"] in tempdict: #only device with interesting states we need to concern.
             alldevices.append(device["name"])
             devicedict[device["name"]] = (device["id"], tempdict[device["name"]])
-        
+
     md_rules = MonitorRules(ruledict, alldevices)
     webServer = my_http_server(md_rules, md, devicedict, args.important)
     print("Server started with ip http://{0}:{1}".format(hostName, serverPort))
