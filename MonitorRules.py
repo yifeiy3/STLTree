@@ -532,7 +532,9 @@ class MonitorRules():
                 2. Check if the device still have changed to the desired value
         '''
         currDate = datetime.datetime.now(datetime.timezone.utc) #Smartthings uses UTC as time reference
-        if self._checkOneRule(rulestr, currDate):
+        currDateToStr = currDate.strftime("%Y-%m-%dT%H:%M:%S") #convert to string for sec-diff.
+
+        if self._checkOneRule(rulestr, currDateToStr):
             time.sleep(1) #give a 1 second gap for device to change state before we check step 2.
             
             try:

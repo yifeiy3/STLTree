@@ -12,7 +12,7 @@ class Monitor():
         return res.json()
     
     def changeDeviceState(self, deviceId, deviceName, command):
-        url = self._endpoint + "/monitorControl/{0}/{1}".format(deviceId, command)
+        url = self._endpoint + "/monitorControl".format(deviceId, command)
         headers = {"Authorization":"Bearer {0}".format(self._key)}
         param = {"id": deviceId,
                  "cmd": command,

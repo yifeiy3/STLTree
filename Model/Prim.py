@@ -93,7 +93,7 @@ class SLPrimitives(Primitives):
         self.param = l
     
     def convertIneq(self):
-        if self.oper == 'GF':
+        if self.oper == 'FG':
             if self.ineq == '<':
                 return '<='
             else:

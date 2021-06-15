@@ -16,10 +16,10 @@ A_ON,A_OFF,B_ON,B_OFF,P_Away,P_Home,D_Lock,D_Open,SA_OFF,SA_SIREN = 1,2,3,4,5,6,
 T_High,T_Normal = 11,12
 event_table = [
    #(In_Event,      In_State,  Out_State, Out_Event,    time_delay) 
-    (Temp_Chg_H,       None,   T_High,    ThermoGT85,       0), #if temperture > 85, it sends event
+    (Temp_Chg_H,       None,   T_High,    ThermoGT85,       0),    #if temperture > 85, it sends event
+    (ThermoGT85,     T_High,   T_High,    SmokeSiren,       5),
     (Temp_Chg_L,       None,   T_Normal,  Smokeoff,         0), #if temperture < 85, it sends event
-    (ThermoGT85,     T_High,   None,      SmokeSiren,       5),
-    (LightA_OFF,     A_ON,     A_OFF,    LightB_ON,       5),
+    (LightA_OFF,     A_ON,     A_OFF,     LightB_ON,        5),
     (LightA_ON,      A_OFF,    A_ON,      None,             0),
     (LightB_OFF,     B_ON,     B_OFF,     None,             0),
     (LightB_ON,      B_OFF,     B_ON,     None,             0),
