@@ -29,7 +29,7 @@ def primInit(signal_devices):
     
     return primitives
     
-def primOptimizationInit(signal, primitives):
+def primOptimizationInit(signal, primitives, Tmax, Steps):
     '''
         optimize with simulated annealing to find the best primitive options,
         then return its corresponding objective function val. (info gain with robustness)
@@ -38,9 +38,9 @@ def primOptimizationInit(signal, primitives):
     for i in range(len(primitives)):
         prim = primitives[i]
         if prim.oper == 'G' or prim.oper == 'F':
-            problem = FLPrimitiveProblem(prim, timebounds, spacebounds, signal)
+            problem = FLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
         elif prim.oper == 'GF' or prim.oper == 'FG':
-            problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal)
+            problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
         else:
             raise Exception("Invalid primitives")
         primitives[i], objfunval = primitiveOptimization(problem)
@@ -61,11 +61,13 @@ def primGetBest(primitives):
         print("minimum prim is none, should not happen")
     return minprim
 
-def setBestPrimitive(signal):
+def setBestPrimitive(signal, Tmax, Steps):
     '''
         gets the best primitive to split our dataset, from simulated annealing algorithm.
+        @param: Tmax for SA algorithm
+        @param Steps for SA algorithm
     '''
     sig_devices = signal.device
     primitives = primInit(sig_devices)
-    opt_primitives = primOptimizationInit(signal, primitives)
+    opt_primitives = primOptimizationInit(signal, primitives, Tmax, Steps)
     return primGetBest(opt_primitives)

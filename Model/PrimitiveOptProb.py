@@ -9,7 +9,7 @@ class FLPrimitiveProblem(Annealer):
     '''
         for first level primitive: G/F
     '''
-    def __init__(self, pinit, timebounds, spacebounds, signal, userobustness=False):
+    def __init__(self, pinit, timebounds, spacebounds, signal, Tmax, Steps, userobustness=False):
         '''
             @param pinit: initial state of the primitive, when passed in should be an
             primitive object with all parameters being Nan
@@ -29,10 +29,8 @@ class FLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        #self.Tmax = 10000.0
-        #self.steps = 6000
-        self.Tmax = 800.0
-        self.steps = 100
+        self.Tmax = Tmax
+        self.steps = Steps
         self.userobustness = userobustness
 
     def move(self):
@@ -59,7 +57,7 @@ class SLPrimitiveProblem(Annealer):
     '''
         for second level primitive: GF/FG
     '''
-    def __init__(self, pinit, timebounds, spacebounds, signal, userobustness=False):
+    def __init__(self, pinit, timebounds, spacebounds, signal, Tmax, Steps, userobustness=False):
         '''
             @param pinit: initial state of the primitive, when passed in should be an
             primitive object with all parameters being Nan
@@ -79,10 +77,8 @@ class SLPrimitiveProblem(Annealer):
         self.ub = ub 
         self.timelb = timebounds[0]
         self.timeub = timebounds[1]
-        #self.Tmax = 10000.0
-        #self.steps = 6000
-        self.Tmax = 800.0
-        self.steps = 100
+        self.Tmax = Tmax
+        self.steps = Steps
         self.userobustness = userobustness
 
     def move(self):

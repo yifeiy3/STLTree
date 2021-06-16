@@ -5,8 +5,23 @@ from Model.DataProcess.signalProcess import Signal
 from Model.DataProcess.datahandling import trainingset, evaluationset
 import numpy as np 
 import pickle
+import argparse 
 
-ERROR_THRESHOLD = 0.10 #since some state change are just random chance, only the mispredictions going lower
+parser = argparse.ArgumentParser(
+    description='Print the rules learned by our PSTL Tree'
+)
+parser.add_argument('--threshold', action = 'store', type=float, dest='error_threshold', default=0.10,
+    help='The error threshold a rule need to be less than to have it printed out, default 0.10')
+parser.add_argument('--interval', action = 'store', type=int, dest = 'interval', default=10,
+    help='Number of timestamps per evaluation data interval, this should be the same as the \
+        interval used for training, default 10')
+parser.add_argument('--offset', action = 'store', type=int, dest = 'offset', default=2,
+    help='Number of timestamps we skip between training data intervals, this should be the same as \
+        the interval used for training, default 2')
+
+args = parser.parse_args()
+
+ERROR_THRESHOLD = args.error_threshold #since some state change are just random chance, only the mispredictions going lower
                        #than this threshold is recorded as anomalies.
 
 eval_csv = ['TestSet2/eval.csv']
@@ -24,7 +39,7 @@ try:
 except FileNotFoundError:
     raise Exception("Learned class dict not found.")
 
-eval_set = evaluationset(ar, alldevices, cdict, interval=10, offset=2) #need to be consistent with training
+eval_set = evaluationset(ar, alldevices, cdict, interval=args.interval, offset=args.offset) #need to be consistent with training
 
 def reverse_classdict(signal, index):
     '''

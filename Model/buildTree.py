@@ -2,17 +2,10 @@ from .setPrim import setBestPrimitive
 from .treeStruct import Node 
 import numpy as np 
 
-max_depth = 4 #maximum depth of the tree
-frac_same = 0.95 #once we reach 95% accuracy of the class, we stop splitting that branch
-min_nobj = 30 #min number of signals in the class to continue recursion
-
-def check_stop(tree):
+def check_stop(tree, max_depth, frac_same, min_nobj):
     '''
         check our stop condition for learning the tree.
     '''
-    global max_depth
-    global frac_same
-    global min_nobj
     if tree.currentDepth >= max_depth:
         print("Learning stopped by exceeding current depth limit")
         return True 
@@ -24,24 +17,26 @@ def check_stop(tree):
         return True
     return False 
 
-def buildTree(signals, parent=None, branch='left'):
-    '''
-        build our decision tree
-    '''
-    T = Node(parent, signals, branch)
-    if check_stop(T):
+def buildTree(signals, Tmax, Steps, maxDepth, fracSame, minNumberObj):
+
+    def buildTreeHelper(signals, parent=None, branch='left'):
+        '''
+            build our decision tree
+        '''
+        T = Node(parent, signals, branch)
+        if check_stop(T, maxDepth, fracSame, minNumberObj):
+            return T
+        PTSLformula = setBestPrimitive(signals, Tmax, Steps)
+        T.setPTSL(PTSLformula)
+        signals_left, signals_right = T.partitionSignals() 
+        if not signals_left or not signals_right:
+            #can't find a way to split data further
+            print("Null Split!")
+            return T 
+        
+        T.leftchild = buildTreeHelper(signals_left, T, "left")
+        T.rightchild = buildTreeHelper(signals_right, T, "right")
         return T
-    PTSLformula = setBestPrimitive(signals)
-    T.setPTSL(PTSLformula)
-    signals_left, signals_right = T.partitionSignals() 
-    if not signals_left or not signals_right:
-        #can't find a way to split data further
-        print("Null Split!")
-        return T 
-    
-    T.leftchild = buildTree(signals_left, T, "left")
-    T.rightchild = buildTree(signals_right, T, "right")
-    return T
-    
-    
+        
+    return buildTreeHelper(signals)
 

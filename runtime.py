@@ -13,6 +13,7 @@ hostName = "192.168.1.107"
 serverPort = 10001
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
 APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/54017165-5332-4a80-8e93-b23dc7d5af78"
+user_defined_rulefile = 'UserDefinedRules/rule.txt'
 
 class MyServer(BaseHTTPRequestHandler):
     def __init__(self, RuleMonitor, DeviceMonitor, devicedict, important, *args):
@@ -68,10 +69,24 @@ class my_http_server:
         self.server = server
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='Start a server that monitor\
-     either all state changes or state changes for important devices only')
-    parser.add_argument('--important', action = 'store', dest = 'important', default=False,
+     device state changes in a Smartthings environment.')
+    
+    #parse arguments for monitor
+    parser.add_argument('--important', action = 'store', type=bool, dest = 'important', default=False,
         help='Set to True if we only want to monitor important state changes')
+    parser.add_argument('--maxStates', action = 'store', type=int, dest = 'maxStates', default=5,
+        help='Maximum number of past states change events the monitor stores for each device, default = 5')
+    parser.add_argument('--do', action='store', dest='do', type=bool, default=True,
+        help='Set to True if also checkign DO rules. If a rule gets satisfied for 2 seconds while \
+            the device have not changed state, the monitor automatically changes the device state')
+
+    #parse arguments for converting rule
+    parser.add_argument('--threshold', action = 'store', type=float, dest='error_threshold', default=0.10,
+        help='The confidence threshold a rule need to be less than to have it being monitored, default 0.10')
+    parser.add_argument('--interval', action='store', type=int, dest='cap', default=10,
+        help='The data interval size used to train the rules.')
     args = parser.parse_args()
 
     cdict = {}
@@ -81,7 +96,7 @@ if __name__ == "__main__":
     if not cdict:
         raise Exception("Learned class dict not found")
 
-    #ruledict = convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined='UserDefinedRules/rule.txt')
+    #ruledict = convertRules(cdict, error_threshold = args.error_threshold, cap = args.cap, user_defined=user_defined_rulefile)
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
@@ -111,7 +126,7 @@ if __name__ == "__main__":
             alldevices.append(device["name"])
             devicedict[device["name"]] = (device["id"], tempdict[device["name"]])
 
-    md_rules = MonitorRules(ruledict, alldevices, max_states=5, do=False)
+    md_rules = MonitorRules(ruledict, alldevices, max_states=args.maxStates, do=args.do)
     webServer = my_http_server(md_rules, md, devicedict, args.important)
     print("Server started with ip http://{0}:{1}".format(hostName, serverPort))
 

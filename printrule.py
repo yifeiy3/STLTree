@@ -1,5 +1,6 @@
 import pickle 
 from Model.Prim import FLPrimitives, SLPrimitives, Primitives
+import argparse
 
 def isleaf(T):
     return T.leftchild is None and T.rightchild is None 
@@ -30,7 +31,14 @@ def printRule(T):
             s += " and \n\t\t"
     return s 
 
-ERROR_THRESHOLD = 0.10 #since some state change are only random choice, we should only
+parser = argparse.ArgumentParser(
+    description='Print the rules learned by our PSTL Tree'
+)
+parser.add_argument('--threshold', action = 'store', type=float, dest='error_threshold', default=0.10,
+    help='The confidence threshold a rule need to be less than to have it printed out, default 0.10')
+args = parser.parse_args()
+
+ERROR_THRESHOLD = args.error_threshold #since some state change are only random choice, we should only
                        #print out the rules with good confidence
 cdict = {}
 with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
