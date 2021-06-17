@@ -29,6 +29,7 @@ def findPossibleStates(statedict, idx, ineq):
         given some rule (device < c), we convert this into all the possible states in classdict that
         is mapped from some integer less than c. In otherwords, a list of all possible satisfying states
     '''
+    #TODO: this does now handle rules with continued data yet.
     if ineq == '<':
         return [statedict[i] for i in statedict.keys() if int(i) < idx]
     if ineq == '>':

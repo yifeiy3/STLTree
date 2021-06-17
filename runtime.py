@@ -34,6 +34,8 @@ class MyServer(BaseHTTPRequestHandler):
         print(query)
         currentquery = (query['date'][0], query['device'][0], query['state'][0], query['value'][0])
         stateChgs = []
+
+        #TODO: currently this important thing does nothing, may need to expand this feature?
         if self.important:
             for devices in devicedict.keys():
                 deviceid, states = devicedict[devices]
