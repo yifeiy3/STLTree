@@ -98,11 +98,19 @@ if __name__ == "__main__":
     if not cdict:
         raise Exception("Learned class dict not found")
 
-    #ruledict = convertRules(cdict, error_threshold = args.error_threshold, cap = args.cap, user_defined=user_defined_rulefile)
+    #immediateRules, ruledict = convertRules(
+            #                                 cdict, 
+            #                                 error_threshold = args.error_threshold, 
+                                            # cap = args.cap, 
+                                            # user_defined=user_defined_rulefile, 
+                                            # immediate = False
+                                            #)
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
-    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']), ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
+    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), 
+                                        ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']),
+                                         ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
                                      [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'])],
                                      ],
                               'unlocked': []},
@@ -128,7 +136,7 @@ if __name__ == "__main__":
             alldevices.append(device["name"])
             devicedict[device["name"]] = (device["id"], tempdict[device["name"]])
 
-    md_rules = MonitorRules(ruledict, alldevices, max_states=args.maxStates, do=args.do)
+    md_rules = MonitorRules(ruledict, immediateRules, alldevices, max_states=args.maxStates, do=args.do)
     webServer = my_http_server(md_rules, md, devicedict, args.important)
     print("Server started with ip http://{0}:{1}".format(hostName, serverPort))
 

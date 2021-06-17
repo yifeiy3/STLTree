@@ -27,8 +27,11 @@ def sec_diff(date_ref, date):
     return day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff
 
 class MonitorRules():
-    def __init__(self, rules, devices, max_states = 5, do=True):
+    def __init__(self, rules, immediateRules, devices, max_states = 5, do=True):
         '''
+            @param: rules: rules learned from STLTree
+            @param: immediateRules: immediate rules learned from TreeNoSTL
+            @devices: devices in the environment
             @param: max_states: maximum number of states for each device our monitor stores
             @param: whether we track for DO rules, that is, if a rule condition gets satisfied but no device change has
             happened, the monitor automatically commands the device to change after a fixed amount of time.
@@ -37,6 +40,7 @@ class MonitorRules():
         self.deviceStates = self._initializeState(devices)
         self.rules = rules #dont rules received from ParseRules.py 
         self.doRules = convertDoRules(rules) if do else None
+        self.immediateRules = immediateRules
         self.max_states = max_states
     
     def _initializeState(self, devices):
@@ -390,7 +394,7 @@ class MonitorRules():
                 return offsetInfo[0] + max(0, offsetInfo[2])
             else:
                 return offsetInfo[1] + max(0, offsetInfo[2])
-        print(timeIntervals)
+
         #we note each interval with in a list would not overlap by our construction, our goal is simply to check
         #if there is len(timInterval) amount of interval overlap in the provided intervals.
         allIntVals = [item for sublist in timeIntervals for item in sublist] #flattens our list.
@@ -512,6 +516,11 @@ class MonitorRules():
         self.updateState(currdate, currdevice, currState, currValue)
 
         boolresult, shouldstate = self._checkRules(currChg)
+
+        #TODO: Handling of immediate rules, should be prioritized over PSTL rules probably.
+        if self.immediateRules:
+            immediateBoolResult, immediateShouldState = self.checkImmediateViolation()
+
         if boolresult:
             #for debugging
             if shouldstate != currValue:
@@ -524,6 +533,12 @@ class MonitorRules():
         
         return boolresult, shouldstate, anticipatedChgs
     
+    def checkImmediateViolation(self):
+        '''
+            Checks whether our immediate rules learned from TreeNoSTL is satisfied
+        '''
+        return False, 'Not Implemented'
+
     def checkCommand(self, dname, dstate, dvalue, rulestr):
         '''
             As a final check for the rule before it is sent to Samsung Smartthings hub to change device state,

@@ -104,7 +104,7 @@ def convertDoRules(parsedDict):
     
     return d 
 
-def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
+def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True):
     '''
         for a model that we learned device state to be A when B happens, we add a rule dictionary that
         says device should be in the specified state when B happens 
@@ -113,6 +113,7 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
         @param: error_threshold: only rules with confidence higher than this will be considered.
         @param: cap: the interval period we used to divide our dataset during training.
         @param: user_defined: A file describing user defined rules that we would like to be added to the dict
+        @param: immediate: whether we check the immediate rules derived from TreeNoSTL
 
         @return map each device to a list of rules, each rule is a list of 4 tuple condition of
         (deviceName, PTSL_type, inequality, time_interval, possibleStates for the rule)
@@ -122,6 +123,7 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
     '''
 
     parsedict = {}
+    parseImmediateDict = {}
     devices = cdict.keys()
 
     #STL tree defined rules
@@ -132,7 +134,9 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
             with open("LearnedModel/treemodel/{0}.pkl".format(device), 'rb') as inmodel:
                 T = pickle.load(inmodel)
         except FileNotFoundError:
-            raise Exception("Learned model not found")
+            print("WARNING: Learned STL model not found for {0}".format(device))
+            continue 
+
         ruledict = {values: [] for (keys,values) in cdict[device].items()}
         for leaf in findleaves(T):
             if leaf.predError < error_threshold:
@@ -145,8 +149,22 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None):
         userRuleList = convertUserDefinedRules(user_defined)
         for device, dontStateVal, userRule in userRuleList:
             addOrAppendDepth2(parsedict, device, dontStateVal, userRule)
-                
-    return parsedict
+    
+    if immediate:
+        for device in devices:
+            immeruledict = None 
+            try:
+                with open("LearnedModel/treeNoSTLRules/{0}.pkl".format(device), 'rb') as rmodel:
+                    immeruledict = pickle.load(rmodel)
+            except FileNotFoundError:
+                print("WARNING: Learned TreeNoSTL model not found for {0}".format(device))
+                continue
+
+            for devices in immeruledict.keys():
+                for startState, endState, stateChanged, rulestr in immeruledict[devices]:
+                    #parseImmediateDict[devices][endstate] = list of (startState, stateChanged, rulestr)
+                    addOrAppendDepth2(parseImmediateDict, devices, endState, (startState, stateChanged, rulestr))
+    return parseImmediateDict, parsedict
 
 def convertUserDefinedRules(userfile):
 
@@ -192,12 +210,15 @@ def convertUserDefinedRules(userfile):
             ruleList.append((device, dontstateVal, individualRuleList))
     return ruleList
 
-# if __name__ == '__main__':
-#     cdict = {}
-#     with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-#         cdict = pickle.load(dictfile)
-#     doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
-#     for keys in doDict.keys():
-#         print("key: {0}".format(keys))
-#         print(doDict[keys])
-#         print('_____________________________________________')
+if __name__ == '__main__':
+    cdict = {}
+    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+        cdict = pickle.load(dictfile)
+    #doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
+    print(cdict.keys())
+    immediate, xd = convertRules(cdict)
+    print(immediate)
+    # for keys in doDict.keys():
+    #     print("key: {0}".format(keys))
+    #     print(doDict[keys])
+    #     print('_____________________________________________')
