@@ -119,8 +119,6 @@ def tree_to_rule_store(decisiontree, feature_names, class_label, threshold):
 
         @return a dictionary mapping device, state value, to the rules
     '''
-    #TODO: perhaps add in a 6th element to the tuple, specify the precondition needed just for the
-    #immediate rules, and explicitly check for this precondition for these kind of rules.
     tree_ = decisiontree.tree_
     feature_name = [
         feature_names[i] if i != tree._tree.TREE_UNDEFINED else "undefined!"

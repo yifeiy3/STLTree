@@ -118,6 +118,9 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
         @return map each device to a list of rules, each rule is a list of 4 tuple condition of
         (deviceName, PTSL_type, inequality, time_interval, possibleStates for the rule)
 
+        if immediate is set to True, we also return a dictionary of immediate rules such that
+        dict[device][(startState, endState)] = rule
+
         We trigger the rule if all of the rule condition is satisfied in the list, and we change the device
         state if at least 1 of the rules is satisfied.
     '''
@@ -161,9 +164,10 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
                 continue
 
             for devices in immeruledict.keys():
-                for startState, endState, stateChanged, rulestr in immeruledict[devices]:
-                    #parseImmediateDict[devices][endstate] = list of (startState, stateChanged, rulestr)
-                    addOrAppendDepth2(parseImmediateDict, devices, endState, (startState, stateChanged, rulestr))
+                for startState, endState, rulestr in immeruledict[devices]:
+                    #parseImmediateDict[devices][(startState, endstate)] = ruleStr
+                    #ruleStr =  (deviceName_state, startState, endState, stateChanged?, negate?)
+                    addOrAppendDepth2(parseImmediateDict, devices, (startState, endState), rulestr)
     return parseImmediateDict, parsedict
 
 def convertUserDefinedRules(userfile):

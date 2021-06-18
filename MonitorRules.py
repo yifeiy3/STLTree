@@ -507,6 +507,8 @@ class MonitorRules():
             eachstateChg is a 4-tuple: (date, device name, state, value)
 
             Note: for stateChgs, the states should be inserted in time order for each device
+
+            If both an immediate rule and PSTL rule are violated, we prioritize immediate rule first.
         '''
         currdate, currdevice, currState, currValue = currChg
         for date, device, state, value in stateChgs:
@@ -519,13 +521,14 @@ class MonitorRules():
 
         #TODO: Handling of immediate rules, should be prioritized over PSTL rules probably.
         if self.immediateRules:
-            immediateBoolResult, immediateShouldState = self.checkImmediateViolation()
+            immediateBoolResult, immediateShouldState = self.checkImmediateViolationDONT(currChg)
 
-        if boolresult:
-            #for debugging
-            if shouldstate != currValue:
-                print("This should not happen with shouldstate: {0}, currValue: {1}".format(shouldstate, currValue))
-                raise NotImplementedError
+        if not immediateBoolResult:  #immediate rule is violated
+            if not boolresult: #two conflicting rules, priotize immediate rule
+                shouldstate = immediateShouldState
+            else:
+                boolresult = immediateBoolResult
+                shouldstate = immediateShouldState
         
         anticipatedChgs = {}
         if self.doRules: #TODO: Need Debugging.
@@ -533,12 +536,59 @@ class MonitorRules():
         
         return boolresult, shouldstate, anticipatedChgs
     
-    def checkImmediateViolation(self):
-        '''
-            Checks whether our immediate rules learned from TreeNoSTL is satisfied
-        '''
-        return False, 'Not Implemented'
+    def _checkImmediate(self, currdate, startState, endState, stateChanged, negate, currentStates):
+        lastChangedEndState, lastChangedEndTime = currentStates[-1]
+        satisfied = False 
+        if lastChangedEndState == endState:
+            dur = sec_diff(lastChangedEndTime, currdate)
+            if not stateChanged:
+                satisfied = dur > 1 #it stays in the state
+            elif len(currentStates) > 1:
+                statebeforelastChg, _thetime = currentStates[-2]
+                satisfied = dur <= 1 and statebeforelastChg == startState #immediate change and matches the state change
+            else:
+                return False #not enough info in states, simply ignore negate and return false
+        if negate:
+            satisfied = not satisfied
+        return satisfied
 
+    def _checkOneImmediateDont(self, rules, currdate):
+        #immediate rule format: a list of (deviceName_state, startState, endState, stateChanged?, negate?)
+        satisfied = True 
+        for device_state_tuple, sState, eState, sChanged, negate in rules:
+            dname, dstate = device_state_tuple.rsplit('_', 1)
+            statedict = self.deviceStates[dname]
+            if dstate not in statedict:
+                return False #we don't know device state
+            satisfied = satisfied and self._checkImmediate(currdate, sState, eState, sChanged, negate, statedict)
+        return satisfied
+
+    def checkImmediateViolationDONT(self, currChg):
+        '''
+            Checks whether our DONT immediate rules learned from TreeNoSTL is satisfied
+        '''
+        currdate, currdevice, currState, currValue = currChg
+        keyname = "{0}_{1}".format(currdevice, currState)
+        lastDeviceState = None
+        try:
+            lastDeviceState = self.deviceStates[currdevice][currState][-1] #date, value tuple
+        except KeyError:
+            return True, currValue #no info about past states of devices
+        
+        if keyname not in self.immediateRules:
+            return True, currValue #no rules
+
+        ruledict = self.immediateRules[keyname]
+
+        #same starting state but different ending state
+        keys = [key for key in ruledict.keys() if key[0] == lastDeviceState[1] and key[1] != currValue]
+        for key in keys: 
+            for rules in ruledict[key]:
+                if self._checkOneImmediateDont(rules, currdate):
+                    return False, key[1] #should be in this endState instead
+        
+        return True, currValue
+        
     def checkCommand(self, dname, dstate, dvalue, rulestr):
         '''
             As a final check for the rule before it is sent to Samsung Smartthings hub to change device state,
