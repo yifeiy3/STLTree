@@ -98,6 +98,7 @@ if __name__ == "__main__":
     if not cdict:
         raise Exception("Learned class dict not found")
 
+    immediateRules = {}
     #immediateRules, ruledict = convertRules(
             #                                 cdict, 
             #                                 error_threshold = args.error_threshold, 

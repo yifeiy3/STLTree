@@ -14,19 +14,20 @@ class Scheduler():
         self.rm = ruleMonitor #we would need this to check whether our command precondition is still satisfied
         self.devicedict = devicedict #we would need this to retrieve device id
 
-    def _sendCommand(self, device, newStateValue, ruleStr):
+    def _sendCommand(self, device, newStateValue, ruleStr, immediate):
         '''
             Sends a request to Samsung Smartthing hub to change device state according to DO rule
             @param device: deviceName_deviceState tuple
             @param newStateValue: the new state value device should change to
             @param ruleStr: The rule corresponding to the device change, we check for one last time if this is satisfied
             before sending command to monitor
+            @param immediate: whether the rule is immediate or not
         '''
         parseName = device.rsplit('_', 1)
         dname, dstate = parseName[0], parseName[1]
 
         #check if we still need to make the scheduled change
-        if self.rm.checkCommand(dname, dstate, newStateValue, ruleStr):
+        if self.rm.checkCommand(dname, dstate, newStateValue, ruleStr, immediate):
             stateChgCmd = CAPABILITY_TO_COMMAND_DICT[dstate][newStateValue]
             deviceid = self.devicedict[dname][0]
             self.dm.changeDeviceState(deviceid, dname, stateChgCmd)
@@ -40,13 +41,15 @@ class Scheduler():
         '''
         #adds new changed to the already scheduled changes
         for timedelay in antChanges.keys():
-            device, newStateValue, theRule = antChanges[timedelay]
-            #give 2 seconds of react time on the Samsung hub, we only change state if
-            #the Do rule is violated.
-            newjob = self.scheduler.add_job(
-                lambda: self._sendCommand(device, newStateValue, theRule),
-                'date',
-                run_date=datetime.datetime.now() + datetime.timedelta(seconds=timedelay)
-            )
-            addOrAppendDepth2(self.storedJobs, device, newStateValue, newjob)
-    
+            for device in antChanges[timedelay].keys():
+                newStateValue, theRule, immediate = antChanges[timedelay][device]
+                #give 2 seconds of react time on the Samsung hub, we only change state if
+                #the Do rule is violated.
+                timedelay = max(timedelay, 1) #to accomodate for immediate rules, if immediate we give 1 second room for change
+                newjob = self.scheduler.add_job(
+                    lambda: self._sendCommand(device, newStateValue, theRule, immediate),
+                    'date',
+                    run_date=datetime.datetime.now() + datetime.timedelta(seconds=timedelay)
+                )
+                addOrAppendDepth2(self.storedJobs, device, newStateValue, newjob)
+        

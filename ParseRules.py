@@ -72,6 +72,42 @@ def getRule(T, classdict, cap):
         T = T.parent
     return s 
 
+def convertImmediateDoRules(parsedDict):
+    '''
+        Given a parsed immediate rule dict, convert it to process do rules
+
+        @return a dictionary d, d[deviceName_state][keyTriple] = ruledict
+        where key Triple = (negate?, stateBefore, stateAfter) and
+        ruledict[device_state][(keyBefore, keyAfter)] = List of rules need to be satisfied 
+        for device_state to change from keyBefore to keyAfter.
+    '''
+    if not parsedDict:
+        return None 
+
+    d = {}
+
+    for device in parsedDict.keys():
+        for stateChange in parsedDict[device].keys(): 
+            allValueRules = parsedDict[device][stateChange]
+            #each rule is a five tuple of (device_state, stateBefore, stateAfter, stateChanged?, negate)
+            for individualRule in allValueRules:
+                for deviceName, stateBefore, stateAfter, changed, negate in individualRule:
+                    if not changed and not negate: 
+                        #the device stays in the state, not intereting in checking do rules
+                        #since we only monitor device changes
+                        continue 
+
+                    if deviceName not in d.keys():
+                        d[deviceName] = {}
+                    
+                    deviceDict = d[deviceName]
+                    keytriple = (negate, stateBefore, stateAfter)
+                    tempdict = {}
+                    addOrAppendDepth2(tempdict, device, stateChange, individualRule)
+                    deviceDict[keytriple] = tempdict
+    
+    return d
+
 def convertDoRules(parsedDict):
     '''
         Given a parsed rule dict, we want to convert to another dictionary that is easy for processing do rules,
@@ -164,7 +200,7 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
                 continue
 
             for devices in immeruledict.keys():
-                for startState, endState, rulestr in immeruledict[devices]:
+                for startState, endState, _stateChg, rulestr in immeruledict[devices]:
                     #parseImmediateDict[devices][(startState, endstate)] = ruleStr
                     #ruleStr =  (deviceName_state, startState, endState, stateChanged?, negate?)
                     addOrAppendDepth2(parseImmediateDict, devices, (startState, endState), rulestr)
@@ -221,7 +257,9 @@ if __name__ == '__main__':
     #doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
     print(cdict.keys())
     immediate, xd = convertRules(cdict)
-    print(immediate)
+    print("Immediate Rules: {0}".format(immediate))
+    print("________________________________________")
+    print("Converted Immediate Rules: {0}".format(convertImmediateDoRules(immediate)))
     # for keys in doDict.keys():
     #     print("key: {0}".format(keys))
     #     print(doDict[keys])

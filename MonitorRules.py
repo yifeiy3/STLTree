@@ -1,4 +1,4 @@
-from ParseRules import convertDoRules
+from ParseRules import convertDoRules, convertImmediateDoRules
 import datetime
 import time 
 import functools
@@ -41,6 +41,7 @@ class MonitorRules():
         self.rules = rules #dont rules received from ParseRules.py 
         self.doRules = convertDoRules(rules) if do else None
         self.immediateRules = immediateRules
+        self.doimmediateRules = convertImmediateDoRules(immediateRules) if do else None
         self.max_states = max_states
     
     def _initializeState(self, devices):
@@ -457,6 +458,11 @@ class MonitorRules():
             d[device_state][value] = ruledict, where
             ruledict[device'][newValue] = set of rules associates with changing device's state to value
             that can change our device' to newValue
+
+            @return a dictionary describing anticipated changes in the environment for do rules after certain timedelay
+            antChgs[timedelay][device] = (newStateValue, rulestring), which represents the device should be 
+            changed to newStateValue after timedelay according to rulestring. If multiple state value change occurs for
+            the same time delay, arbitrarily pick one and report the conflict.
         '''
 
         def checkDoRuleOnce(stateDict, currentDate, device):
@@ -488,14 +494,26 @@ class MonitorRules():
                         
         currdate, currdevice, currState, currValue = currChg 
         keyname = "{0}_{1}".format(currdevice, currState)
+        anticipatedChgs = {}
         if keyname not in self.doRules:
-            return True, currValue #no rules about this device and this state, we can just continue
+            return anticipatedChgs #no rules about this device and this state, we can just continue
         ruledict = self.doRules[keyname][currValue]
         
-        anticipatedChgs = {}
         for device in ruledict.keys():
             for _tag, newStateValue, timedelay, theRule in checkDoRuleOnce(ruledict[device], currdate, keyname):
-                anticipatedChgs[timedelay] = (device, newStateValue, theRule) #this device is also a device_state tuple.
+                if timedelay in anticipatedChgs.keys():
+                    if device in anticipatedChgs[timedelay].keys(): #this device is also a device_state tuple.
+                        #direct conflict occured
+                        #TODO: maybe do something other than just raise a warning here?
+                        val, rule, _imme = anticipatedChgs[timedelay][device]
+                        print("WARNING: direct conflict between rules: {0} \n and rule: {1} \n, with the first rule changing \
+                        device {2} to value {3}, second to value {4}".format(rule, theRule, device, val, newStateValue))
+                    #if multiple rules are satisfied for the same device, we pick the last one
+                    anticipatedChgs[timedelay][device] =  (newStateValue, theRule, False) 
+                else:
+                    anticipatedChgs[timedelay] ={}
+                    anticipatedChgs[timedelay][device] =  (newStateValue, theRule, False) 
+
         #returns a dictionary that maps after x time, the device should change to newStateValue according to DO rule.
         return anticipatedChgs
 
@@ -519,7 +537,6 @@ class MonitorRules():
 
         boolresult, shouldstate = self._checkRules(currChg)
 
-        #TODO: Handling of immediate rules, should be prioritized over PSTL rules probably.
         if self.immediateRules:
             immediateBoolResult, immediateShouldState = self.checkImmediateViolationDONT(currChg)
 
@@ -531,11 +548,77 @@ class MonitorRules():
                 shouldstate = immediateShouldState
         
         anticipatedChgs = {}
-        if self.doRules: #TODO: Need Debugging.
+        if self.doRules: 
             anticipatedChgs = self._checkDoRules(currChg, self.doRules)
-        
+            self._checkImmediateDoRules(anticipatedChgs, currChg) #add in the immediate rules in anticipated changes
+
         return boolresult, shouldstate, anticipatedChgs
     
+    def _checkImmediateDoRuleOnce(self, currChg, ruledict, lastDeviceState):
+        '''
+            @param ruledict: a dictionary d, d[deviceName_state][keyTriple] = ruledict
+            where key Triple = (negate?, stateBefore, stateAfter) and
+            ruledict[device_state][(keyBefore, keyAfter)] = List of rules need to be satisfied 
+            for device_state to change from keyBefore to keyAfter.
+
+            @param lastDeviceState: Last device state before the current change for the device currChg is associated with
+        '''
+        currdate, _currdevice, _currState, currValue = currChg
+        recordChgs = []
+
+        for keytriple in ruledict.keys():
+            negate, statebefore, stateAfter = keytriple
+            if negate and (statebefore == lastDeviceState and stateAfter == currValue):
+                continue
+            elif not negate and not (statebefore == lastDeviceState and stateAfter == currValue):
+                continue
+            else:
+                for deviceName in ruledict[keytriple].keys():
+                    for keytuple in ruledict[keytriple][deviceName].keys():
+                        sb, sa = keytuple #state before, state after for the device we are checking whether should change state
+                        de, st = deviceName.rsplit('_', 1)
+                        _time, lastState = self.deviceStates[de][st][-1]
+                        if sb != lastState:
+                            continue #precondition not satisfied
+
+                        rules = ruledict[keytriple][deviceName][keytuple]
+                        if self._checkOneImmediateRule(rules, currdate):
+                            recordChgs.append((deviceName, sa, rules, 0))
+                            #1 sec be the time offset to execute the do rule since the rule is supposed to be immediate
+        
+        return recordChgs
+
+    def _checkImmediateDoRules(self, anticipateddict, currChg):
+        '''
+            @param anticipatedDict: dictionary of anticipated changed as in checking for STL DO rules
+        '''
+        _currdate, currdevice, currState, currValue = currChg
+        _time, lastDeviceState = None, None
+        try:
+            _time, lastDeviceState = self.deviceStates[currdevice][currState][-1]
+        except KeyError:
+            return anticipateddict #no information about previous state, nothing to be done here
+
+        keyname = "{0}_{1}".format(currdevice, currState)
+        if keyname not in self.doimmediateRules:
+            return anticipateddict #nothing to be done here
+
+        ruledict = self.doimmediateRules[keyname]
+        for device, newStateValue, theRule, timedelay in self._checkImmediateDoRuleOnce(currChg, ruledict, lastDeviceState):
+            if timedelay in anticipateddict.keys():
+                if device in anticipateddict[timedelay].keys(): #this device is also a device_state tuple.
+                    #direct conflict occured
+                    #TODO: maybe do something other than just raise a warning here?
+                    val, rule, _imme = anticipateddict[timedelay][device]
+                    print("WARNING: direct conflict between rules: {0} \n and rule: {1} \n, with the first rule changing \
+                    device {2} to value {3}, second to value {4}".format(rule, theRule, device, val, newStateValue))
+                #if multiple rules are satisfied for the same device, we pick the last one
+                anticipateddict[timedelay][device] =  (newStateValue, theRule, True) 
+            else:
+                anticipateddict[timedelay] ={}
+                anticipateddict[timedelay][device] =  (newStateValue, theRule, True) 
+            return anticipateddict
+
     def _checkImmediate(self, currdate, startState, endState, stateChanged, negate, currentStates):
         lastChangedEndState, lastChangedEndTime = currentStates[-1]
         satisfied = False 
@@ -552,7 +635,7 @@ class MonitorRules():
             satisfied = not satisfied
         return satisfied
 
-    def _checkOneImmediateDont(self, rules, currdate):
+    def _checkOneImmediateRule(self, rules, currdate):
         #immediate rule format: a list of (deviceName_state, startState, endState, stateChanged?, negate?)
         satisfied = True 
         for device_state_tuple, sState, eState, sChanged, negate in rules:
@@ -584,28 +667,37 @@ class MonitorRules():
         keys = [key for key in ruledict.keys() if key[0] == lastDeviceState[1] and key[1] != currValue]
         for key in keys: 
             for rules in ruledict[key]:
-                if self._checkOneImmediateDont(rules, currdate):
+                if self._checkOneImmediateRule(rules, currdate):
                     return False, key[1] #should be in this endState instead
         
         return True, currValue
         
-    def checkCommand(self, dname, dstate, dvalue, rulestr):
+    def checkCommand(self, dname, dstate, dvalue, rulestr, immediate):
         '''
             As a final check for the rule before it is sent to Samsung Smartthings hub to change device state,
             this fuction does:
                 1. Check whether preconditions for the rulestr is still satisfied
                 2. Check if the device still have changed to the desired value
+            
+            if it is an immediate rule, only step 2 will be checked.
         '''
         currDate = datetime.datetime.now(datetime.timezone.utc) #Smartthings uses UTC as time reference
         currDateToStr = currDate.strftime("%Y-%m-%dT%H:%M:%S") #convert to string for sec-diff.
 
-        if self._checkOneRule(rulestr, currDateToStr):
-            time.sleep(1) #give a 1 second gap for device to change state before we check step 2.
-            
+        if immediate:
             try:
                 _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
                 return currValue != dvalue 
             except KeyError: #no state change has happened.
                 return True
+        else:
+            if self._checkOneRule(rulestr, currDateToStr):
+                time.sleep(1) 
+                
+                try:
+                    _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
+                    return currValue != dvalue 
+                except KeyError: #no state change has happened.
+                    return True
             
         return False 

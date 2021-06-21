@@ -31,7 +31,7 @@ def convertImmediateRule(keywords, negate):
     '''
     deviceName, startState, endState = keywords[0], keywords[1], keywords[2]
 
-    return(deviceName, startState, endState[:-1], keywords[-1][-1:] == '0', negate)
+    return(deviceName, startState, endState[:-1], keywords[-1][-1:] == '1', negate)
     
 
 def tree_to_code(decisiontree, feature_names, class_label):
