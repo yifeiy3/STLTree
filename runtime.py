@@ -99,7 +99,8 @@ if __name__ == "__main__":
         raise Exception("Learned class dict not found")
 
     immediateRules = {}
-    #immediateRules, ruledict = convertRules(
+    gapdict = {}
+    #gapdict, immediateRules, ruledict = convertRules(
             #                                 cdict, 
             #                                 error_threshold = args.error_threshold, 
                                             # cap = args.cap, 
@@ -137,7 +138,7 @@ if __name__ == "__main__":
             alldevices.append(device["name"])
             devicedict[device["name"]] = (device["id"], tempdict[device["name"]])
 
-    md_rules = MonitorRules(ruledict, immediateRules, alldevices, max_states=args.maxStates, do=args.do)
+    md_rules = MonitorRules(ruledict, immediateRules, gapdict, alldevices, args.maxStates, do=args.do)
     webServer = my_http_server(md_rules, md, devicedict, args.important)
     print("Server started with ip http://{0}:{1}".format(hostName, serverPort))
 

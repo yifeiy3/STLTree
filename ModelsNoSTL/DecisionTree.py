@@ -8,34 +8,41 @@ from DecisionTreeToVisual import tree_to_code, tree_to_rule, tree_to_rule_store
 import pickle 
 import argparse 
 
-def checkint(s):
+def checkint(s, gap):
     try:
         int(s)
-        return str(int(s)//5 * 5) #every category separate by a magnitude of 5
+        return str(int(s)//gap * gap) #every category separate by a magnitude of gap
     except ValueError:
         return str(s)
 
-def processSingle(s1, s2):
-    d1 = checkint(s1)
-    d2 = checkint(s2)
+def processSingle(s1, s2, gap):
+    d1 = checkint(s1, gap)
+    d2 = checkint(s2, gap)
     if d1 == d2:
         return d1 + "_" + d2 + "0"
     else:
         return d1 + "_" + d2 + "1"
 
-def aggregate(ar, heads):
+def aggregate(ar, heads, gap_dict):
     '''
         timeperiod: #seconds
         aggregate data based change of every second
+
+        @param gap_dict: used to separate continuous variables into categories.
     '''
     #data process to list of lists
     record = []
     #zip current state and the state after time period to see change relations.
     for dar in ar:
-        #print(dar)
-        for i in range(0, dar.shape[0] - 1):
-            record.append(
-                [str(heads[j]) + "_" + processSingle(dar[i, j], dar[i+1, j]) for j in range(dar.shape[1])])
+        temprecord = [[''] * dar.shape[1]] * dar.shape[0]
+        for j in range(0, dar.shape[1]):
+            try:
+                gap = gap_dict[heads[j]]
+            except KeyError:
+                gap = 5
+            for i in range(0, dar.shape[0] - 1):
+                temprecord[i][j] = str(heads[j]) + "_" + processSingle(dar[i, j], dar[i+1, j], gap)
+        record += temprecord
     return record
 
 def genlabel(col):
@@ -51,8 +58,9 @@ def genlabel(col):
                 break
     return res_label, total_class
 
-def gen_train_label(device, col):
+def gen_train_label(device, col, gap):
     '''
+        @param gap: ueed to classify continuous variable, has no effect if not continuous
         label for change state at the next second
     '''
 
@@ -60,17 +68,18 @@ def gen_train_label(device, col):
     for cols in col:
         for i in range(0, cols.shape[0]-1):
             labels.append(
-                str(device) + "_" + processSingle(cols[i], cols[i + 1])
+                str(device) + "_" + processSingle(cols[i], cols[i + 1], gap)
             )
     return labels
 
-def data_process(header, store_data):
+def data_process(header, store_data, gap_dict):
     '''
-        @return: uniqueClasses: A dictionary that maps each device to all the unique state changes it can take
+        @param gap_dict: A dictionary used to define the gaps for classifying continuous variables. Map device to a number
+
         @return: classdict: A dictionary that maps the label of the tree to all the information needed in training 
         a tree.
     '''
-    rec = aggregate(store_data, header)
+    rec = aggregate(store_data, header, gap_dict)
     class_dict = {}
     for i in range(len(header)):
         try:
@@ -85,7 +94,11 @@ def data_process(header, store_data):
                         data_row.append(rec[rows][cols])
                 train_data.append(data_row)
             label_col = [sd[:, i] for sd in store_data]#note
-            train_label = gen_train_label(header[i], label_col)
+            try:
+                gap = gap_dict[header[i]]
+            except KeyError:
+                gap = 5 #default to be 5
+            train_label = gen_train_label(header[i], label_col, gap)
             y, class_label = genlabel(train_label)
             enc = OneHotEncoder(handle_unknown='ignore')
             trans_res = enc.fit_transform(train_data).toarray()
@@ -93,8 +106,8 @@ def data_process(header, store_data):
             class_dict[header[i]] = (trans_res, y, enc, class_label)
     return class_dict
 
-def eval_data_process(header, eval_data, classdict):
-    rec = aggregate(eval_data, header)
+def eval_data_process(header, eval_data, classdict, gap_dict):
+    rec = aggregate(eval_data, header, gap_dict)
     eval_class_dict = {}
     for i in range(len(header)):
         try:
@@ -169,13 +182,19 @@ if __name__ == '__main__':
         help='only rules with a higher accuracy in prediction than this will be printed, default 0.90')
     args = parser.parse_args()
 
+    #a dictionary specifiying the gap for separating continuous variable into categories. if none provided for
+    #the continuous variable, use 5 as a default.
+    gap_dict = {}
+    with open("../LearnedModel/treeNoSTLgapDict/gap.pkl", 'wb') as outmodel:
+        pickle.dump(gap_dict, outmodel, pickle.HIGHEST_PROTOCOL)
+        
     ar = []
     for csv_file in data_csv:
         store_data = pd.read_csv(csv_file, index_col=0)
         ar.append(store_data.to_numpy())
     #do a decision tree for each class? we only care about discrete variables for now
     heads = list(store_data.columns.values)
-    cd = data_process(heads, ar) #header, data
+    cd = data_process(heads, ar, gap_dict) #header, data
 
     treemodels = train_tree(cd, args.depth, args.threshold)
     eval_csv = ['../Samsung/test.csv']
@@ -183,7 +202,7 @@ if __name__ == '__main__':
     for csv_file in eval_csv:
         eval_data = pd.read_csv(csv_file, index_col=0)
         evar.append(eval_data.to_numpy())
-    eval_cd = eval_data_process(heads, evar, cd)
+    eval_cd = eval_data_process(heads, evar, cd, gap_dict)
     for data_header in cd.keys():
         outfile = "logs/DecisionTreeLog{0}.txt".format(data_header)
         trans_res, y, enc, class_label = eval_cd[data_header]

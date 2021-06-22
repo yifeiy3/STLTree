@@ -29,7 +29,9 @@ def findPossibleStates(statedict, idx, ineq):
         given some rule (device < c), we convert this into all the possible states in classdict that
         is mapped from some integer less than c. In otherwords, a list of all possible satisfying states
     '''
-    #TODO: this does now handle rules with continued data yet.
+    #TODO: this does not handle rules with continued data yet.
+    if not statedict:
+        return [idx] #continuous data, simply evaluate base on value.
     if ineq == '<':
         return [statedict[i] for i in statedict.keys() if int(i) < idx]
     if ineq == '>':
@@ -61,7 +63,11 @@ def getRule(T, classdict, cap):
             PTSL_time_interval = (cap - PTSL.param[0], cap - PTSL.param[1], PTSL.param[2])
             objval = int(PTSL.param[3])
 
-        statedict = classdict[PTSL.dimname]
+        try:
+            statedict = classdict[PTSL.dimname]
+        except KeyError:
+            statedict = {} #if continuous data, can't find in the classdict
+
         if T.branch == 'left':
             #true branch
             s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq)))
@@ -129,14 +135,21 @@ def convertDoRules(parsedDict):
             #a list of rules, each rule is a list of 5 tuple with "and" relation, described in getRule above.
             for individualRule in allValueRules:
                 for clause in individualRule:
-                    deviceName, _tp, _ineq, _ti, possibleStates = clause
+                    deviceName, _tp, ineq, _ti, possibleStates = clause
                     for eachState in possibleStates:
                         ruledict = {}
                         try:
                             ruledict = d[deviceName][eachState]
+                            addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
                         except KeyError:
-                            print("Error found with d: {0} \n on device: {1}, newStateValues: {2}".format(d, device, newStateValues))
-                        addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
+                            #we have a continuous variable
+                            if deviceName not in d.keys():
+                                d[deviceName] = {}
+                            d[deviceName][eachState] = {}
+                            ruledict = d[deviceName][eachState]
+
+                            newkey = newStateValues + '_' + ineq #add in inequality for rules
+                            addOrAppendDepth2(ruledict, device, newkey, individualRule)
     
     return d 
 
@@ -190,7 +203,15 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
             addOrAppendDepth2(parsedict, device, dontStateVal, userRule)
     
     if immediate:
-        for device in devices:
+        gap_dict = None 
+        try:
+            with open("LearnedModel/treeNoSTLgapDict/gap.pkl", 'rb') as rmodel:
+                gap_dict = pickle.load(rmodel)
+        except FileNotFoundError:
+            gap_dict = None
+            print("WARNING: No gap dict found, every continuous variable category is set with default 5")
+
+        for device in devices: 
             immeruledict = None 
             try:
                 with open("LearnedModel/treeNoSTLRules/{0}.pkl".format(device), 'rb') as rmodel:
@@ -204,7 +225,7 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
                     #parseImmediateDict[devices][(startState, endstate)] = ruleStr
                     #ruleStr =  (deviceName_state, startState, endState, stateChanged?, negate?)
                     addOrAppendDepth2(parseImmediateDict, devices, (startState, endState), rulestr)
-    return parseImmediateDict, parsedict
+    return gap_dict, parseImmediateDict, parsedict
 
 def convertUserDefinedRules(userfile):
 
@@ -256,7 +277,7 @@ if __name__ == '__main__':
         cdict = pickle.load(dictfile)
     #doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
     print(cdict.keys())
-    immediate, xd = convertRules(cdict)
+    gapd, immediate, xd = convertRules(cdict)
     print("Immediate Rules: {0}".format(immediate))
     print("________________________________________")
     print("Converted Immediate Rules: {0}".format(convertImmediateDoRules(immediate)))
