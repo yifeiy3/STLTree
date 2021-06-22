@@ -237,6 +237,22 @@ def convertUserDefinedRules(userfile):
         else: #hours
             return 3600 * int(timeduration)
 
+    def handleContinuous(value):
+        '''
+            Given a continuous value for device, parse the inequality. 
+            The continuous value is specified as GREATER THAN xxx/LESS THAN xxx etc.
+        '''
+        if 'GREATER EQUAL THAN ' in value:
+            return '>=', value.lstrip('GREATER EQUAL THAN ')
+        elif 'GREATER THAN ' in value:
+            return '>', value.lstrip('GREATER THAN ')
+        elif 'LESS THAN ' in value:
+            return '<', value.lstrip('LESS THAN ')
+        elif 'LESS EQUAL THAN ' in value:
+            return '<=', value.lstrip('LESS EQUAL THAN ')
+        else: #not a continuous variable
+            return '=', value
+
     ruleList = []
     with open(userfile, 'r') as rulefile:
         for rules in rulefile:
@@ -256,18 +272,21 @@ def convertUserDefinedRules(userfile):
                 for ruletuples in items:
                     deviceInfo, timeInfo = ruletuples
                     deviceName = deviceInfo[1] + '_' + deviceInfo[0] #format: deviceName_deviceState
+                    possibleIneq, possibleState = handleContinuous(deviceInfo[2]) #handle continuous data
+
                     if timeInfo[2] == 'FG':
                         secondaryTime, primaryTime = timeInfo[0].split('+')
                         secondaryDur, primaryDur = timeInfo[1].split('+')
                         durTimeSecondary = convertTime(secondaryTime, secondaryDur)
                         durTimePrimary = convertTime(primaryTime, primaryDur)
                         timeBound = (afterTime + durTimePrimary, afterTime, durTimeSecondary)
-                        individualRuleList.append((deviceName, timeInfo[2], '=', timeBound, [deviceInfo[2]]))
+                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState]))
                     else:
                         durTime = convertTime(timeInfo[0], timeInfo[1])
                         lb = afterTime + durTime
                         timeBound = (lb, afterTime, -1)
-                        individualRuleList.append((deviceName, timeInfo[2], '=', timeBound, [deviceInfo[2]]))
+                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState]))
+                        
             ruleList.append((device, dontstateVal, individualRuleList))
     return ruleList
 

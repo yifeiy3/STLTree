@@ -19,15 +19,14 @@ def parse(rulestr):
 
 def parsereq(req):
     '''
-        parse the requirement rules according to the format. So far, we only support STAYS rules,
-        which means when all condition are satisfied, we shouldnt change the device into other state other
-        than specified in the rule.
+        parse the requirement rules according to the format. 
 
+        IS specifies the state value when rule is satisfied.
         AFTER means event dont change state after some seconds.
         If no AFTER is supported in rule, we assume immediate action with after 0 seconds.
         return (deviceMethod, device), (Time duration, Time unit)
     '''
-    domethod, device = re.findall(r'(^\w*)\s+(.*)(?= STAYS )|((?<= STAYS ).*)', req)
+    domethod, device = re.findall(r'(^\w*)\s+(.*)(?= IS )|((?<= IS ).*)', req)
     res = (domethod[0], domethod[1], device[2])
     try:
         dev, rr = res[2].split(' AFTER ')
@@ -38,18 +37,24 @@ def parsereq(req):
         dur, timeMethod = rr.split(' ')
     result = (res[1], dev)
     return result, (dur, timeMethod)
-        
+ 
 def parsecond(conditions):
     '''
         For the conditions, the 'AFTER' key word is meaning less, just need to look out for 'FOR'|'IN LAST'
         return similar result to parsereq
 
-        if no 'FOR' | 'IN LAST' is specified, we default to last second (immediate action)
+        if no 'IN LAST' is specified, we default to last second (immediate action), we must have a 'FOR'
+        for G rule since otherwise it is the same as F rule otherwise.
 
         IS xxx FOR xxx SECONDS correspond to STL : G
         BECOME xxx IN LAST xxx SECONDS correspond to STL: F
         BECOME xxx IN LAST xxx SECONDS FOR xxx SECONDS corrrespond to STL: FG
 
+        IF continuous variable, we have GREATER THAN xxx
+                                        LESS THAN xxx
+                                        GREATER EQUAL THAN xxx
+                                        LESS EQUAL THAN xxx
+    
         return a list of lists. Each item in the list is 'and relation', each item within each item in the list
         is 'or relation'.
 
@@ -65,7 +70,7 @@ def parsecond(conditions):
                 dev, rr = res[2].split(' FOR ')
                 res = (res[0], res[1], dev)
             except:
-                reslist.append((res, ("1", 'SECONDS', 'G')))
+                print("You need to specify duration for G rules, use F rule instead for immediate action")
             else:
                 dur, timeMethod = rr.split(' ')
                 reslist.append((res, (dur, timeMethod, "G")))

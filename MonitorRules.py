@@ -562,6 +562,7 @@ class MonitorRules():
             for device in ruledict.keys():
                 for _tag, newStateValue, timedelay, theRule in checkDoRuleOnce(ruledict[device], currdate, keyname):
                     if timedelay in anticipatedChgs.keys():
+                        immediate = timedelay == 0 #it is possible to have immediate rules due to user defined.
                         if device in anticipatedChgs[timedelay].keys(): #this device is also a device_state tuple.
                             #direct conflict occured
                             #TODO: maybe do something other than just raise a warning here?
@@ -569,10 +570,10 @@ class MonitorRules():
                             print("WARNING: direct conflict between rules: {0} \n and rule: {1} \n, with the first rule changing \
                             device {2} to value {3}, second to value {4}".format(rule, theRule, device, val, newStateValue))
                         #if multiple rules are satisfied for the same device, we pick the last one
-                        anticipatedChgs[timedelay][device] =  (newStateValue, theRule, False) 
+                        anticipatedChgs[timedelay][device] =  (newStateValue, theRule, immediate) 
                     else:
                         anticipatedChgs[timedelay] = {}
-                        anticipatedChgs[timedelay][device] =  (newStateValue, theRule, False) 
+                        anticipatedChgs[timedelay][device] =  (newStateValue, theRule, immediate) 
 
         #returns a dictionary that maps after x time, the device should change to newStateValue according to DO rule.
         return anticipatedChgs
