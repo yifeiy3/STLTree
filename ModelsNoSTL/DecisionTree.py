@@ -34,7 +34,7 @@ def aggregate(ar, heads, gap_dict):
     record = []
     #zip current state and the state after time period to see change relations.
     for dar in ar:
-        temprecord = [[''] * dar.shape[1]] * dar.shape[0]
+        temprecord = [[''] * dar.shape[1]] * (dar.shape[0] -1)
         for j in range(0, dar.shape[1]):
             try:
                 gap = gap_dict[heads[j]]

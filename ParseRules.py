@@ -145,10 +145,11 @@ def convertDoRules(parsedDict):
                             #we have a continuous variable
                             if deviceName not in d.keys():
                                 d[deviceName] = {}
-                            d[deviceName][eachState] = {}
-                            ruledict = d[deviceName][eachState]
+                            newstateKey = eachState + '_' + ineq
+                            d[deviceName][newstateKey] = {}
+                            ruledict = d[deviceName][newstateKey]
 
-                            newkey = newStateValues + '_' + ineq #add in inequality for rules
+                            newkey = newStateValues #add in inequality for rules
                             addOrAppendDepth2(ruledict, device, newkey, individualRule)
     
     return d 
@@ -292,14 +293,17 @@ def convertUserDefinedRules(userfile):
 
 if __name__ == '__main__':
     cdict = {}
+    # userRuleList = convertUserDefinedRules('./UserDefinedRules/rule.txt')
+    # print(userRuleList)
     with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
         cdict = pickle.load(dictfile)
     #doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
     print(cdict.keys())
     gapd, immediate, xd = convertRules(cdict)
-    print("Immediate Rules: {0}".format(immediate))
+    simple_imme = immediate['Door_lock']
+    print("Immediate Rules: {0}".format(simple_imme))
     print("________________________________________")
-    print("Converted Immediate Rules: {0}".format(convertImmediateDoRules(immediate)))
+    print("Converted Immediate Rules: {0}".format(convertImmediateDoRules({'Door_lock':simple_imme})))
     # for keys in doDict.keys():
     #     print("key: {0}".format(keys))
     #     print(doDict[keys])

@@ -3,6 +3,8 @@ import re
 def parse(rulestr):
     '''
         Simple parser based on the DONT rule syntax.
+        We note continuous variables can only appear as conditions, not the actual 
+        specification of changes.
     '''
     try:
         req, cond = rulestr.split(' WHEN ')
@@ -97,7 +99,7 @@ def parsecond(conditions):
     return reslist
 
 if __name__ ==  "__main__":
-    rule = 'THE Door_lock STAYS unlock AFTER 3 SECONDS WHEN alarm OF Smoke Alarm IS siren FOR 5 SECONDS'
+    rule = 'THE Door_lock IS unlocked WHEN temperature OF thermostat BECOME GREATER THAN 75 IN LAST 5 SECONDS FOR 2 SECONDS'
     reqrule = 'DONT unlock THE Door'
     reqcond = 'alarm OF Smoke Alarm BECOME siren IN LAST 5 SECONDS FOR 2 SECONDS OR alarm OF Smoke Alarm IS siren FOR 5 SECONDS'
     print(parse(rule))

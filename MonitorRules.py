@@ -43,7 +43,7 @@ class MonitorRules():
         self.rules = rules #dont rules received from ParseRules.py 
         self.doRules = convertDoRules(rules) if do else None
         self.immediateRules = immediateRules
-        self.gapdict = gapdict
+        self.gapdict = gapdict if gapdict else {}
         self.doimmediateRules = convertImmediateDoRules(immediateRules) if do else None
         self.max_states = max_states
     
@@ -530,13 +530,13 @@ class MonitorRules():
             '''
             value, ineq = keyvalue.rsplit('_', 1)
             if ineq == '<':
-                return int(value) < currentvalue
+                return int(currentvalue) < int(value)
             elif ineq == '>':
-                return int(value) > currentvalue
+                return int(currentvalue) > int(value)
             elif ineq == '>=':
-                return int(value) >= currentvalue
+                return int(currentvalue) >= int(value)
             elif ineq == '<=':
-                return int(value) <= currentvalue
+                return int(currentvalue) <= int(value)
             else:
                 print("unrecognized inequality: {0}".format(ineq))
                 return False
@@ -556,13 +556,14 @@ class MonitorRules():
         else:
             for keyvalues in self.doRules[keyname].keys():
                 if checkValidValue(keyvalues, value):
-                    dicts.append(self.doRules[keyname][currValue])
+                    dicts.append(self.doRules[keyname][keyvalues])
         
         for ruledict in dicts:
             for device in ruledict.keys():
                 for _tag, newStateValue, timedelay, theRule in checkDoRuleOnce(ruledict[device], currdate, keyname):
+                    immediate = timedelay == 0 #it is possible to have immediate rules due to user defined.
+                    
                     if timedelay in anticipatedChgs.keys():
-                        immediate = timedelay == 0 #it is possible to have immediate rules due to user defined.
                         if device in anticipatedChgs[timedelay].keys(): #this device is also a device_state tuple.
                             #direct conflict occured
                             #TODO: maybe do something other than just raise a warning here?
@@ -593,8 +594,6 @@ class MonitorRules():
         for date, device, state, value in stateChgs:
             #date_t = sec_diff(date, currdate)
             self.updateState(date, device, state, value)
-        
-        self.updateState(currdate, currdevice, currState, currValue)
 
         boolresult, shouldstate = self._checkRules(currChg)
 
@@ -609,10 +608,12 @@ class MonitorRules():
                 shouldstate = immediateShouldState
         
         anticipatedChgs = {}
-        if self.doRules: 
+
+        if self.doRules is not None: 
             anticipatedChgs = self._checkDoRules(currChg, self.doRules)
             self._checkImmediateDoRules(anticipatedChgs, currChg) #add in the immediate rules in anticipated changes
 
+        self.updateState(currdate, currdevice, currState, currValue) #add the change after rule checking
         return boolresult, shouldstate, anticipatedChgs
     
     def _checkImmediateDoRuleOnce(self, currChg, ruledict, lastDeviceState):
@@ -636,6 +637,9 @@ class MonitorRules():
         for keytriple in ruledict.keys():
             negate, statebefore, stateAfter = keytriple
             goodStateChange = (self._checkStateEql(lastDeviceState, statebefore, gap) and self._checkStateEql(stateAfter, currValue, gap))
+            print("statebefore: {0}, lastDeviceState: {1}".format(statebefore, lastDeviceState))
+            print("stateAfter: {0}, currValue: {1}".format(stateAfter, currValue))
+
             if negate and goodStateChange:
                 continue
             elif not negate and not goodStateChange:
@@ -650,10 +654,17 @@ class MonitorRules():
                             continue #precondition not satisfied
 
                         rules = ruledict[keytriple][deviceName][keytuple]
-                        if self._checkOneImmediateRule(rules, currdate):
-                            recordChgs.append((deviceName, sa, rules, 0))
-                            #1 sec be the time offset to execute the do rule since the rule is supposed to be immediate
-        
+                        for rule in rules:
+                            rulecopy = copy.copy(rule)
+                            for i in range(len(rulecopy)):
+                                if rulecopy[i][0] == keyname:
+                                    rulecopy.pop(i) #remove the rule corresponding to current device.
+                                    break
+
+                            if self._checkOneImmediateRule(rulecopy, currdate):
+                                recordChgs.append((deviceName, sa, rulecopy, 0))
+                                break
+                                #1 sec be the time offset to execute the do rule since the rule is supposed to be immediate
         return recordChgs
 
     def _checkImmediateDoRules(self, anticipateddict, currChg):
@@ -672,6 +683,7 @@ class MonitorRules():
             return anticipateddict #nothing to be done here
 
         ruledict = self.doimmediateRules[keyname]
+
         for device, newStateValue, theRule, timedelay in self._checkImmediateDoRuleOnce(currChg, ruledict, lastDeviceState):
             if timedelay in anticipateddict.keys():
                 if device in anticipateddict[timedelay].keys(): #this device is also a device_state tuple.
@@ -693,17 +705,18 @@ class MonitorRules():
             v2 = str(int(value2)//gap * gap)
             return v1 == v2
         except ValueError:
-            return v1 == v2
+            return value1 == value2
 
     def _checkImmediate(self, currdate, startState, endState, stateChanged, negate, currentStates, gap):
-        lastChangedEndState, lastChangedEndTime = currentStates[-1]
+        lastChangedEndTime, lastChangedEndState = currentStates[-1]
+
         satisfied = False 
         if self._checkStateEql(lastChangedEndState, endState, gap):
             dur = sec_diff(lastChangedEndTime, currdate)
             if not stateChanged:
                 satisfied = dur > 1 #it stays in the state
             elif len(currentStates) > 1:
-                statebeforelastChg, _thetime = currentStates[-2]
+                _thetime, statebeforelastChg = currentStates[-2]
                 satisfied = dur <= 1 and self._checkStateEql(statebeforelastChg, startState, gap) #immediate change and matches the state change
             else:
                 return False #not enough info in states, simply ignore negate and return false
@@ -728,7 +741,9 @@ class MonitorRules():
             statedict = self.deviceStates[dname]
             if dstate not in statedict.keys():
                 return False #we don't know device state
-            satisfied = satisfied and self._checkImmediate(currdate, sState, eState, sChanged, negate, statedict, gap)
+        
+            satisfied = satisfied and self._checkImmediate(currdate, sState, eState, sChanged, negate, statedict[dstate], gap)
+            print("Satisfied: {0}".format(satisfied))
         return satisfied
 
     def checkImmediateViolationDONT(self, currChg):
@@ -748,8 +763,14 @@ class MonitorRules():
 
         ruledict = self.immediateRules[keyname]
 
+        try:
+            gap = self.gapdict[keyname]
+        except KeyError:
+            gap = 5
+
         #same starting state but different ending state
-        keys = [key for key in ruledict.keys() if key[0] == lastDeviceState[1] and key[1] != currValue]
+        keys = [key for key in ruledict.keys() if (self._checkStateEql(key[0], lastDeviceState[1], gap) and not self._checkStateEql(key[1], currValue, gap))]
+
         for key in keys: 
             for rules in ruledict[key]:
                 if self._checkOneImmediateRule(rules, currdate):
