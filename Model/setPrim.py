@@ -2,6 +2,7 @@ from .Prim import FLPrimitives, SLPrimitives, Primitives
 from .DataProcess.signalProcess import Signal
 import math 
 from .PrimitiveOptProb import FLPrimitiveProblem, SLPrimitiveProblem, primitiveOptimization
+from .PrimitiveOptNoSA import findParameterFL, findParameterSL
 from .computeSignalBounds import computeSignalBounds
 import numpy 
 
@@ -21,7 +22,7 @@ def primInit(signal_devices):
         primitives.append(FLPrimitives('G', dim_idx, dimname, '>', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, dimname, '<', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, dimname, '>', flparam, math.inf))
-        #TODO: Is GF needed in learning the rules? The wording kind of odd.
+        #We omit GF rules since the wording is not as useful in home IoT setting.
         # primitives.append(SLPrimitives('GF', dim_idx, dimname, '<', slparam, math.inf))
         # primitives.append(SLPrimitives('GF', dim_idx, dimname, '>', slparam, math.inf))
         primitives.append(SLPrimitives('FG', dim_idx, dimname, '<', slparam, math.inf))
@@ -34,17 +35,38 @@ def primOptimizationInit(signal, primitives, Tmax, Steps):
         optimize with simulated annealing to find the best primitive options,
         then return its corresponding objective function val. (info gain with robustness)
     '''
-    timebounds, spacebounds = computeSignalBounds(signal)
+    timebounds, spacebounds, checkAllState = computeSignalBounds(signal, Steps)
+    print(checkAllState)
     for i in range(len(primitives)):
         prim = primitives[i]
+        prim_dim = prim.dim 
         if prim.oper == 'G' or prim.oper == 'F':
-            problem = FLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
+            if not checkAllState[prim_dim][0]: #too many states, use simulated annealing instead
+                problem = FLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
+                primitives[i], objfunval = primitiveOptimization(problem)
+                primitives[i].objfunval = objfunval
+            else:
+                print("Finding parameter assignment through checking all possible states for {0}\
+                    prim oper: {1}\
+                    prim ineq: {2}".format(prim.dimname, prim.oper, prim.ineq))
+                primitives[i], objfunval = findParameterFL(prim, prim_dim, signal, timebounds, spacebounds)
+                primitives[i].objfunval = objfunval
+                print("Learned result with parameter: {0}, objective function val: {1}".format(primitives[i].param, primitives[i].objfunval))
         elif prim.oper == 'GF' or prim.oper == 'FG':
-            problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
+            if not checkAllState[prim_dim][0]: #too many states, use simulated annealing instead
+                problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps)
+                primitives[i], objfunval = primitiveOptimization(problem)
+                primitives[i].objfunval = objfunval
+            else:
+                print("Finding parameter assignment through checking all possible states for {0}\
+                    prim oper: {1}\
+                    prim ineq: {2}".format(prim.dimname, prim.oper, prim.ineq))
+                primitives[i], objfunval = findParameterSL(prim, prim_dim, signal, timebounds, spacebounds)
+                primitives[i].objfunval = objfunval
+                print("Learned result with parameter: {0}, objective function val: {1}".format(primitives[i].param, primitives[i].objfunval))
         else:
             raise Exception("Invalid primitives")
-        primitives[i], objfunval = primitiveOptimization(problem)
-        primitives[i].objfunval = objfunval
+
     return primitives
 
 def primGetBest(primitives):
