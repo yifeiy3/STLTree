@@ -154,16 +154,17 @@ def convertDoRules(parsedDict):
     
     return d 
 
-def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True):
+def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True, stateChangeOnly = False):
     '''
         for a model that we learned device state to be A when B happens, we add a rule dictionary that
         says device should be in the specified state when B happens 
 
-        @param: cdict: the classdict used to train our model
+        @param: devices: the devices in the environment
         @param: error_threshold: only rules with confidence higher than this will be considered.
         @param: cap: the interval period we used to divide our dataset during training.
         @param: user_defined: A file describing user defined rules that we would like to be added to the dict
         @param: immediate: whether we check the immediate rules derived from TreeNoSTL
+        @param: stateChangeOnly: whether the decision tree we learned used state change as data handling method.
 
         @return map each device to a list of rules, each rule is a list of 4 tuple condition of
         (deviceName, PTSL_type, inequality, time_interval, possibleStates for the rule)
@@ -177,7 +178,15 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
 
     parsedict = {}
     parseImmediateDict = {}
-    devices = cdict.keys()
+    cdict = {}
+
+    if not stateChangeOnly:
+        try:
+            with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+                cdict = pickle.load(dictfile)
+                print(cdict)
+        except FileNotFoundError:
+            raise Exception("Learned class dict not found")
 
     #STL tree defined rules
     for device in devices:
@@ -189,6 +198,14 @@ def convertRules(cdict, error_threshold = 0.05, cap = 10, user_defined = None, i
         except FileNotFoundError:
             print("WARNING: Learned STL model not found for {0}".format(device))
             continue 
+        
+        if stateChangeOnly:
+            try: 
+                with open("LearnedModel/STLclassdict/{0}.pkl".format(device), 'rb') as indict:
+                    cdict = pickle.load(indict)
+            except FileNotFoundError:
+                print("WARNING: Learned class dict not found for {0}".format(device))
+                continue 
 
         ruledict = {values: [] for (keys,values) in cdict[device].items()}
         for leaf in findleaves(T):

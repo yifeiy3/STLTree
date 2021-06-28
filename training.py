@@ -1,7 +1,7 @@
 import pandas as pd 
 
 from Model.DataProcess.signalProcess import Signal
-from Model.DataProcess.datahandling import trainingset, evaluationset
+from Model.DataProcess.datahandling import trainingset, evaluationset, trainingsetWithStateChange, evaluationsetWithStateChange
 from Model.buildTree import buildTree
 from Model.treeToString import TreeToString
 from Model.treepruning import pruneTree
@@ -15,6 +15,8 @@ parser.add_argument('--interval', action = 'store', type=int, dest = 'interval',
     help='Number of timestamps per training data interval, default 10')
 parser.add_argument('--offset', action = 'store', type=int, dest = 'offset', default=2,
     help='Number of timestamps we skip between training data intervals, default 2')
+parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+    help='Whether we process interval on interval and offset or on stateChanges.')
 
 #parsing input about tree stop condition
 parser.add_argument('--maxDepth', action = 'store', type=int, dest = 'maxDepth', default=4,
@@ -38,26 +40,36 @@ ar = []
 for csv_file in data_csv:
     signal_data = pd.read_csv(csv_file, index_col=None, header=None)
     ar.append(signal_data.to_numpy())
-#ar = ar[np.newaxis, :, :] #our dataset
+
 if ar:
     alldevices = ar[0][0, 1:].tolist()
 else:
     raise Exception("We do not have data files")
-#print(alldevices)
-training_set = trainingset(ar, alldevices, interval=args.interval, offset=args.offset) #a list of signals for training from our dataset
 
-cdict = {}
-with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-    cdict = pickle.load(dictfile)
-if cdict is None:
-    raise Exception("Learned class dict not found.")
+if args.withStateChange:
+    training_set = trainingsetWithStateChange(ar, alldevices, args.interval)
+else:
+    training_set = trainingset(ar, alldevices, interval=args.interval, offset=args.offset) #a list of signals for training from our dataset
 
 #add a validation set for pruning our tree
 va = []
 for csv_file in validate_csv:
     validation_data = pd.read_csv(csv_file, index_col=None, header=None)
     va.append(validation_data.to_numpy())
-validation_set = evaluationset(va, alldevices, cdict, interval=args.interval, offset=args.offset) #consistent with training set
+
+if args.withStateChange:
+    validation_set = evaluationsetWithStateChange(va, alldevices, args.interval, args.offset)
+else:
+    cdict = {}
+    try:
+        with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+            cdict = pickle.load(dictfile)
+    except FileNotFoundError:
+        raise Exception("Learned class dict not found.")
+    validation_set = evaluationset(va, alldevices, cdict, interval=args.interval, offset=args.offset) #consistent with training set
+
+if len(training_set) != len(validation_set):
+    raise Exception("Training set and validation set does not contain the same number of devices")
 
 learnedTrees = [] #list of learned decision trees
 for i in range(len(training_set)): 

@@ -8,6 +8,7 @@ from scheduling import Scheduler
 
 import argparse
 import pickle 
+import glob
 
 hostName = "192.168.1.107"
 serverPort = 10001
@@ -83,6 +84,8 @@ if __name__ == "__main__":
     parser.add_argument('--do', action='store', dest='do', type=bool, default=True,
         help='Set to True if also checkign DO rules. If a rule gets satisfied for 2 seconds while \
             the device have not changed state, the monitor automatically changes the device state')
+    parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+    help='Whether we process interval on interval and offset or on stateChanges.')
 
     #parse arguments for converting rule
     parser.add_argument('--threshold', action = 'store', type=float, dest='error_threshold', default=0.10,
@@ -91,21 +94,32 @@ if __name__ == "__main__":
         help='The data interval size used to train the rules.')
     args = parser.parse_args()
 
-    cdict = {}
-    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-        cdict = pickle.load(dictfile)
-        print(cdict)
-    if not cdict:
-        raise Exception("Learned class dict not found")
-
     immediateRules = {}
     gapdict = {}
+    cdict = {}
+
+    if args.withStateChange:
+        for filename in glob.glob('LearnedModel/STLclassdict/*.pkl'):
+            with open(filename, "rb") as dictfile:
+                cdict = pickle.load(dictfile)
+            break #just need the first one to obtain the devices, each class dict should have the same devices
+                  #just may have different mapping for states.
+    else:
+        try:
+            with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+                cdict = pickle.load(dictfile)
+                print(cdict)
+        except FileNotFoundError:
+            raise Exception("Learned class dict not found")
+
+    devices = cdict.keys()
     #gapdict, immediateRules, ruledict = convertRules(
-            #                                 cdict, 
+            #                                 devices, 
             #                                 error_threshold = args.error_threshold, 
                                             # cap = args.cap, 
                                             # user_defined=user_defined_rulefile, 
                                             # immediate = False
+                                            # stateChangeOnly = args.stateChange
                                             #)
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])

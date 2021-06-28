@@ -29,8 +29,8 @@ def partitionWeightsNoRobust(robdeg, labels, lblclass, oper):
         Sfalse = robdeg <= 0
     else:
         '''
-            because we are using 0-1 variables, and computing F and 'GF' by negating the
-            robustness of statement's converse for G and FG, when robdeg = 0, they
+            because we are using 0-1 variables in many cases, and computing F and 'GF' by negating 
+            the robustness of statement's converse for G and FG, when robdeg = 0, they
             should be in complete different classes.
         '''
         Strue = robdeg >= 0

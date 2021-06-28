@@ -2,7 +2,7 @@ import pandas as pd
 from Model.treeEval import teval
 
 from Model.DataProcess.signalProcess import Signal
-from Model.DataProcess.datahandling import trainingset, evaluationset
+from Model.DataProcess.datahandling import evaluationWithStateChange, evaluationset
 import numpy as np 
 import pickle
 import argparse 
@@ -18,6 +18,8 @@ parser.add_argument('--interval', action = 'store', type=int, dest = 'interval',
 parser.add_argument('--offset', action = 'store', type=int, dest = 'offset', default=2,
     help='Number of timestamps we skip between training data intervals, this should be the same as \
         the interval used for training, default 2')
+parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+    help='Whether we process interval on interval and offset or on stateChanges.')
 
 args = parser.parse_args()
 
@@ -32,14 +34,17 @@ if ar:
     alldevices = ar[0, 1:].tolist()
 print(alldevices)
 
-cdict = {}
-try:
-    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-        cdict = pickle.load(dictfile)
-except FileNotFoundError:
-    raise Exception("Learned class dict not found.")
+if not args.withStateChange:
+    cdict = {}
+    try:
+        with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+            cdict = pickle.load(dictfile)
+    except FileNotFoundError:
+        raise Exception("Learned class dict not found.")
 
-eval_set = evaluationset(ar, alldevices, cdict, interval=args.interval, offset=args.offset) #need to be consistent with training
+    eval_set = evaluationset(ar, alldevices, cdict, interval=args.interval, offset=args.offset) #need to be consistent with training
+else:
+    eval_set = evaluationWithStateChange(ar, alldevices, args.interval, args.offset)
 
 def reverse_classdict(signal, index):
     '''

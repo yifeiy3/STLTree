@@ -42,3 +42,4 @@ class Signal():
             get the data for the states of jth device in the data
         '''
         return self.data[:, :, idx]
+    

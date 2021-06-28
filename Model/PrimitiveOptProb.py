@@ -85,7 +85,8 @@ class SLPrimitiveProblem(Annealer):
         try:
             l = random.randrange(self.timelb, self.timeub, self.signal.minintval)
             r = random.randrange(l+1, self.timeub+1, self.signal.minintval)
-            t3 = random.randrange(self.signal.minintval, 10*self.signal.minintval, self.signal.minintval)
+            maxgap = max((self.timeub - self.timelb) // 10, 10 * self.signal.minintval) #limit to at most 1/10 of the signal trace
+            t3 = random.randrange(self.signal.minintval, maxgap, self.signal.minintval)
             c = random.randint(self.lb, self.ub)
             self.state.modifyparam([l, r, t3, c])
         except ValueError:
