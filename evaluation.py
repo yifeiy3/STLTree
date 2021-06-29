@@ -34,7 +34,7 @@ if ar:
     alldevices = ar[0, 1:].tolist()
 print(alldevices)
 
-if not args.withStateChange:
+if not args.stateChange:
     cdict = {}
     try:
         with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:

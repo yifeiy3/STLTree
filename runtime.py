@@ -98,7 +98,7 @@ if __name__ == "__main__":
     gapdict = {}
     cdict = {}
 
-    if args.withStateChange:
+    if args.stateChange:
         for filename in glob.glob('LearnedModel/STLclassdict/*.pkl'):
             with open(filename, "rb") as dictfile:
                 cdict = pickle.load(dictfile)

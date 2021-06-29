@@ -2,6 +2,7 @@ import getDeviceInfo as gd
 import json 
 import pandas as pd
 import IgnoredAttributes 
+import argparse
 from datetime import datetime, timedelta
 
 
@@ -34,13 +35,13 @@ def initialState(length):
 monitorid = "9793402f-fcb7-42af-8461-da541b539f01" #arbitrary id for a device called monitor
 stdattrribute = IgnoredAttributes.IgnoredAttributeList
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
-APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/54017165-5332-4a80-8e93-b23dc7d5af78"
+APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/3158c036-1dec-4c1e-83cc-e466d59962ad"
 
 md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(minutes=300) #last 20 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes=30) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []

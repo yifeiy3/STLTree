@@ -39,7 +39,6 @@ def separate_by_intervals(dataset, interval, offset):
                 each 2d array represents a component of data described by separate_dataset.
     '''
     ds_list = []
-    print(dataset)
     for i in range(len(dataset)):
         datacomponent = dataset[i]
         #print(datacomponent)
@@ -109,17 +108,18 @@ def build_from_classdict(dataset, devices, classdict):
         else:
             statedict = classdict[devices[i]] #map each integer to the state it is representing.
             itemdict = {v: k for k, v in statedict.items()} #all the dictionary values should be unique
-            print(itemdict)
+            print("itemdict: {0}".format(itemdict))
             for k1 in range(np.shape(dataset)[0]):
                 for k2 in range(np.shape(dataset)[1]):
                     try:
                         dataset[k1, k2, i+1] = itemdict[dataset[k1, k2, i+1]]
                     except KeyError:
                         print("unrecognized state: {0} for device {1}".format(
-                            dataset[k1, k2, i+1],
+                            dataset[k1, k2, :],
                             devices[i]
                         ))
                         dataset[k1, k2, i+1] = -1 #arbitrary class
+                        raise Exception("stop here")
     return dataset
 
 def separate_base_on_statechange(dataset, interval, stateChangedLoc):
@@ -134,8 +134,8 @@ def separate_base_on_statechange(dataset, interval, stateChangedLoc):
     #map each dataset k1 to the timestamps k2 where state changes happen 
     statechangedict = { i:[] for i in range(len(dataset))}
     for k1, k2 in stateChangedLoc:
-        start = k2 - interval #start should always be > 0 by how we constructed with backfill
-        ds = dataset[k1][start:k2, :]
+        start = k2 - interval + 1#start should always be >= 0 by how we constructed with backfill
+        ds = dataset[k1][start:k2+1, :]
         ds = ds[np.newaxis, :, :]
         ds_list.append(ds)
         statechangedict[k1].append(k2)
@@ -144,10 +144,10 @@ def separate_base_on_statechange(dataset, interval, stateChangedLoc):
     idlelist = []
     for i in range(len(dataset)):
         #everything before interval wont have enough space to generate data
-        possiblecols = [j for j in range(interval, np.shape(dataset[i])[0]) if j not in statechangedict[i]]
+        possiblecols = [j for j in range(interval, np.shape(dataset[i])[0] - 1) if j not in statechangedict[i]]
         for k in possiblecols:
-            start = k - interval
-            ids = dataset[i][np.newaxis, start:k, :]
+            start = k - interval + 1
+            ids = dataset[i][np.newaxis, start:k+1, :]
             idlelist.append(ids)
     
     random.shuffle(idlelist)
@@ -167,7 +167,8 @@ def construct_trainingset_on_statechange(data, interval, alldevices):
     if not data:
         return training_signals
 
-    numcols = np.shape(data[0])[1] 
+    numcols = np.shape(data[0])[1]
+
     for i in range(numcols-1):
         if not checkint(data[0][1, i+1]): #train a tree on non continuous signal only
             datacols = list(range(1, numcols)) #0th column is for timestamps
@@ -186,8 +187,9 @@ def construct_trainingset_on_statechange(data, interval, alldevices):
             data_for_signal = finalpd[:, :, datacols]
             training_signals.append(Signal(data_for_signal, i+1, classdict, alldevices, finallabelcol))
 
+            print("Number of signals generated for {0} : {1}".format(alldevices[i], np.shape(data_for_signal)[0]))
             #since training data for each signal may be different now, we save a classdict for each.
-            with open("LearnedModel/STLclassdict/{0}.pkl".format(alldevices[i+1]), "wb") as savefile:
+            with open("LearnedModel/STLclassdict/{0}.pkl".format(alldevices[i]), "wb") as savefile:
                 pickle.dump(classdict, savefile, pickle.HIGHEST_PROTOCOL)
     return training_signals
 
@@ -196,7 +198,7 @@ def trainingsetWithStateChange(dataset, alldevices, interval = 10):
     res = construct_trainingset_on_statechange(data_components, interval, alldevices)
     return res            
 
-def evaluationWithStateChange(dataset, alldevices, interval, offset):
+def evaluationsetWithStateChange(dataset, alldevices, interval, offset):
 
     def evaluationsetWithStateChangeHelp(data_by_interval, device_idx, classdict):
         '''
@@ -215,16 +217,17 @@ def evaluationWithStateChange(dataset, alldevices, interval, offset):
     data_components = separate_dataset(dataset, interval)
     data_by_intervals = separate_by_intervals(data_components, interval, offset)
     signal_set = []
-    for i in range(alldevices):
+    for i in range(len(alldevices)):
         device = alldevices[i]
         cdict = {}
         try:
-            with open('LearnedMode/STLclassdict/{0}.pkl'.format(device), 'rb') as dictfile:
+            with open('LearnedModel/STLclassdict/{0}.pkl'.format(device), 'rb') as dictfile:
                 cdict = pickle.load(dictfile)
         except FileNotFoundError:
             print("class dict not found for device {0}, this is intended for continuous variables.".format(device))
             continue
-        ds = build_from_classdict(data_by_intervals, alldevices, cdict)
+        dataset_copy = copy.copy(data_by_intervals)
+        ds = build_from_classdict(dataset_copy, alldevices, cdict)
         signal_set.append(evaluationsetWithStateChangeHelp(ds, i, cdict))
 
     return signal_set

@@ -34,8 +34,8 @@ parser.add_argument('--Steps', action='store', type=int, dest='steps', default=2
 args = parser.parse_args()
 
 #our training data
-data_csv = ['Samsung/test.csv', 'Samsung/test1.csv', 'Samsung/test3.csv']
-validate_csv = ['Samsung/test.csv']
+data_csv = ['Samsung/benchmark8.csv']
+validate_csv = ['Samsung/benchmark8.csv']
 ar = []
 for csv_file in data_csv:
     signal_data = pd.read_csv(csv_file, index_col=None, header=None)
@@ -46,7 +46,7 @@ if ar:
 else:
     raise Exception("We do not have data files")
 
-if args.withStateChange:
+if args.stateChange:
     training_set = trainingsetWithStateChange(ar, alldevices, args.interval)
 else:
     training_set = trainingset(ar, alldevices, interval=args.interval, offset=args.offset) #a list of signals for training from our dataset
@@ -57,7 +57,7 @@ for csv_file in validate_csv:
     validation_data = pd.read_csv(csv_file, index_col=None, header=None)
     va.append(validation_data.to_numpy())
 
-if args.withStateChange:
+if args.stateChange:
     validation_set = evaluationsetWithStateChange(va, alldevices, args.interval, args.offset)
 else:
     cdict = {}
