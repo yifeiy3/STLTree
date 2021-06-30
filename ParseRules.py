@@ -41,10 +41,10 @@ def findPossibleStates(statedict, idx, ineq):
     else:
         return [statedict[i] for i in statedict.keys() if int(i) <= idx]
 
-def getRule(T, classdict, cap):
+def getRule(T, classdict, cap, timestampunit):
     '''
-        Each rule is 5 tuple of:
-        (Device Name, PTSL type, ineq, [from last x seconds, to last x seconds, duration], satisfyingStates)
+        Each rule is 6 tuple of:
+        (Device Name, PTSL type, ineq, [from last x seconds, to last x seconds, duration], satisfyingStates, timestampunit)
         The list comes in "And", everything need to be satisfied.
     '''
     s = []
@@ -70,11 +70,11 @@ def getRule(T, classdict, cap):
 
         if T.branch == 'left':
             #true branch
-            s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq)))
+            s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq), timestampunit))
         else:
             PTSL_ineq = negateIneq(PTSL_ineq)
             PTSL_type = negateOper(PTSL_type)
-            s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq)))
+            s.append((PTSL.dimname, PTSL_type, PTSL_ineq, PTSL_time_interval, findPossibleStates(statedict, objval, PTSL_ineq), timestampunit))
         T = T.parent
     return s 
 
@@ -97,7 +97,7 @@ def convertImmediateDoRules(parsedDict):
             allValueRules = parsedDict[device][stateChange]
             #each rule is a five tuple of (device_state, stateBefore, stateAfter, stateChanged?, negate)
             for individualRule in allValueRules:
-                for deviceName, stateBefore, stateAfter, changed, negate in individualRule:
+                for deviceName, stateBefore, stateAfter, changed, negate, _tsunit in individualRule:
                     if not changed and not negate: 
                         #the device stays in the state, not intereting in checking do rules
                         #since we only monitor device changes
@@ -135,7 +135,7 @@ def convertDoRules(parsedDict):
             #a list of rules, each rule is a list of 5 tuple with "and" relation, described in getRule above.
             for individualRule in allValueRules:
                 for clause in individualRule:
-                    deviceName, _tp, ineq, _ti, possibleStates = clause
+                    deviceName, _tp, ineq, _ti, possibleStates, _tsunit = clause
                     for eachState in possibleStates:
                         ruledict = {}
                         try:
@@ -154,7 +154,8 @@ def convertDoRules(parsedDict):
     
     return d 
 
-def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True, stateChangeOnly = False):
+def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True, stateChangeOnly = False,
+    timestampunit = 'seconds'):
     '''
         for a model that we learned device state to be A when B happens, we add a rule dictionary that
         says device should be in the specified state when B happens 
@@ -165,6 +166,8 @@ def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None,
         @param: user_defined: A file describing user defined rules that we would like to be added to the dict
         @param: immediate: whether we check the immediate rules derived from TreeNoSTL
         @param: stateChangeOnly: whether the decision tree we learned used state change as data handling method.
+        @param: timestampunit: whether the rule is trained under seconds or minutes as base timestamp unit,
+            default is seconds. For user rules, they are always converted to seconds.
 
         @return map each device to a list of rules, each rule is a list of 4 tuple condition of
         (deviceName, PTSL_type, inequality, time_interval, possibleStates for the rule)
@@ -210,7 +213,7 @@ def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None,
         ruledict = {values: [] for (keys,values) in cdict[device].items()}
         for leaf in findleaves(T):
             if leaf.predError < error_threshold:
-                s = getRule(leaf, cdict, cap)
+                s = getRule(leaf, cdict, cap, timestampunit)
                 predclass = leaf.predClass
                 ruledict[cdict[device][predclass]].append(s)
         parsedict[device] = ruledict
@@ -298,12 +301,12 @@ def convertUserDefinedRules(userfile):
                         durTimeSecondary = convertTime(secondaryTime, secondaryDur)
                         durTimePrimary = convertTime(primaryTime, primaryDur)
                         timeBound = (afterTime + durTimePrimary, afterTime, durTimeSecondary)
-                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState]))
+                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState], 'seconds'))
                     else:
                         durTime = convertTime(timeInfo[0], timeInfo[1])
                         lb = afterTime + durTime
                         timeBound = (lb, afterTime, -1)
-                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState]))
+                        individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState], 'seconds'))
                         
             ruleList.append((device, dontstateVal, individualRuleList))
     return ruleList

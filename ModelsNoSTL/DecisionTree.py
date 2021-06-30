@@ -125,11 +125,13 @@ def eval_data_process(header, eval_data, classdict, gap_dict):
             eval_class_dict[header[i]] = (trans_res, y, enc, classlabel)
     return eval_class_dict
 
-def train_tree(class_dict, max_d, threshold):
+def train_tree(class_dict, max_d, threshold, tsunit):
     '''
         Train the tree and print out the learned rules
         @param max_d: maximum depth of the tree
         @param threshold: only rules with accuracy more than this will be printed
+        @param tsunit:  whether the rule is trained under seconds or minutes as base timestamp unit,
+            default is seconds. 
     '''
     tree_dict = {}
     for data_header in class_dict.keys():
@@ -144,7 +146,7 @@ def train_tree(class_dict, max_d, threshold):
         tree_to_rule(clf, feature_names, class_label, threshold, "../LearnedModel/{0}.txt".format(data_header))
 
         #convert our learned rules to a dictionary for runtime monitor, store it in pickle
-        convertedRules = tree_to_rule_store(clf, feature_names, class_label, threshold)
+        convertedRules = tree_to_rule_store(clf, feature_names, class_label, threshold, tsunit)
         with open("../LearnedModel/treeNoSTLRules/{0}.pkl".format(data_header), 'wb') as outmodel:
             pickle.dump(convertedRules, outmodel, pickle.HIGHEST_PROTOCOL)
 
@@ -180,6 +182,9 @@ if __name__ == '__main__':
         help = 'Maximum depth of the learned tree, default is 3')
     parser.add_argument('--threshold', action = 'store', type=float, dest = 'threshold', default = 0.90,
         help='only rules with a higher accuracy in prediction than this will be printed, default 0.90')
+    parser.add_argument('--timestampunit', action='store', type=str, dest = 'tsunit', default='seconds',
+        help="each rule is trained under timestamp of minute or second, default is 'seconds', can be switch to value 'minutes'")
+
     args = parser.parse_args()
 
     #a dictionary specifiying the gap for separating continuous variable into categories. if none provided for
@@ -196,7 +201,7 @@ if __name__ == '__main__':
     heads = list(store_data.columns.values)
     cd = data_process(heads, ar, gap_dict) #header, data
 
-    treemodels = train_tree(cd, args.depth, args.threshold)
+    treemodels = train_tree(cd, args.depth, args.threshold, args.tsunit)
     eval_csv = ['../Samsung/test.csv']
     evar = []
     for csv_file in eval_csv:

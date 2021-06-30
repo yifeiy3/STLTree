@@ -92,6 +92,9 @@ if __name__ == "__main__":
         help='The confidence threshold a rule need to be less than to have it being monitored, default 0.10')
     parser.add_argument('--interval', action='store', type=int, dest='cap', default=10,
         help='The data interval size used to train the rules.')
+    parser.add_argument('--timestampunit', action='store', type=str, dest = 'tsunit', default='seconds',
+        help="each rule is trained under timestamp of minute or second, default is 'seconds', can be switch to value 'minutes'")
+
     args = parser.parse_args()
 
     immediateRules = {}
@@ -120,6 +123,7 @@ if __name__ == "__main__":
                                             # user_defined=user_defined_rulefile, 
                                             # immediate = False
                                             # stateChangeOnly = args.stateChange
+                                            # timestampunit = args.tsunit
                                             #)
     #print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])

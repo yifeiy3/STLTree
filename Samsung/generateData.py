@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime, timedelta
 
 
-def sec_diff(date_ref, date):
+def sec_diff(date_ref, date, ts_unit, interval):
     '''
         compute the second diff between date timestamps
     '''
@@ -25,8 +25,12 @@ def sec_diff(date_ref, date):
     hour_diff = int(date[11:13]) - int(date_ref[11:13])
     minute_diff = int(date[14:16]) - int(date_ref[14:16])
     sec_diff = int(date[17: 19]) - int(date_ref[17:19])
+
+    total_diff = day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff
     # +10 for padding so we can analyze the first event with 10 second intervals.
-    return day_diff * 86400 + hour_diff * 3600 + minute_diff * 60 + sec_diff + 10
+    if ts_unit == 'minutes':
+        return total_diff // 60 + interval
+    return total_diff + interval
 
 def initialState(length):
     return ["bot"] * length
@@ -37,11 +41,18 @@ stdattrribute = IgnoredAttributes.IgnoredAttributeList
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
 APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/3158c036-1dec-4c1e-83cc-e466d59962ad"
 
+parser = argparse.ArgumentParser(description='generate data base on time stamp unit of seconds/minutes')
+parser.add_argument('--timestampunit', action='store', type=str, dest = 'tsunit', default='seconds',
+    help="each time stamp represents a unit of second or minute, default is 'seconds', can be switch to value 'minutes'")
+parser.add_argument('--interval', action='store', type=int, dest = 'interval', default=10,
+    help="the interval gap we would like to proces our data in unit of timestamps, default 10")
+args = parser.parse_args()
+
 md = gd.Monitor(APIKey, APIEndpt)
 devices = md.getThings("all")
 #deviceCol = [device["name"] for device in devices]
 since = None 
-since = datetime.utcnow() - timedelta(minutes=30) #last 20 hour's stuff.
+since = datetime.utcnow() - timedelta(minutes=180) #last 20 hour's stuff.
 
 statechgs = []
 deviceCol = []
@@ -74,7 +85,7 @@ for i in range(len(statechgs)):
         print(deviceCol)
         print(statechgs[i][1] + "_" + statechgs[i][2])
         raise Exception("Should not happen")
-    statechgs[i] = (sec_diff(mindate[0], statechgs[i][0]), deviceidx, statechgs[i][3])
+    statechgs[i] = (sec_diff(mindate[0], statechgs[i][0], args.tsunit, args.interval), deviceidx, statechgs[i][3])
 
 statedict = {}
 for item in statechgs:
@@ -138,6 +149,6 @@ df = pd.DataFrame(datalist, index=the_timestamps, columns = deviceCol)
 drop_cols = [deviceCol[i] for i in range(len(deviceCol)) if not hasInfo[i]]
 print("dropped columns: {0}".format(drop_cols))
 df = df.drop(drop_cols, axis = 1)
-df.to_csv("benchmark7.csv")
+df.to_csv("benchmark11.csv")
 
 

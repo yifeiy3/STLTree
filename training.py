@@ -34,7 +34,7 @@ parser.add_argument('--Steps', action='store', type=int, dest='steps', default=2
 args = parser.parse_args()
 
 #our training data
-data_csv = ['Samsung/benchmark8.csv']
+data_csv = ['Samsung/benchmark8.csv', 'Samsung/benchmark9.csv', 'Samsung/benchmark10.csv', 'Samsung/benchmark11.csv']
 validate_csv = ['Samsung/benchmark8.csv']
 ar = []
 for csv_file in data_csv:

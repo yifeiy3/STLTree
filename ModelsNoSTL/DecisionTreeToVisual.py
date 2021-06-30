@@ -21,17 +21,17 @@ def printVariable(keywords, negate):
     except:
         raise Exception("This should not happen: {0}".format(keywords))
 
-def convertImmediateRule(keywords, negate):
+def convertImmediateRule(keywords, negate, tsunit):
     '''
         Generate immediate rule to be used by the runtime monitor.
         @keywords: 3 tuple of (devicename_deviceState, value before, value after)
         
-        @return a 5-tuple representing the rule, consist of
-        (deviceName, startState, endState, stateChanged?, negate?)
+        @return a 6-tuple representing the rule, consist of
+        (deviceName, startState, endState, stateChanged?, negate?, tsunit)
     '''
     deviceName, startState, endState = keywords[0], keywords[1], keywords[2]
 
-    return(deviceName, startState, endState[:-1], keywords[-1][-1:] == '1', negate)
+    return(deviceName, startState, endState[:-1], keywords[-1][-1:] == '1', negate, tsunit)
     
 
 def tree_to_code(decisiontree, feature_names, class_label):
@@ -113,10 +113,11 @@ def tree_to_rule(decisiontree, feature_names, class_label, threshold, outfile):
             out.write("\t{0}. {1} \n".format(len(ruledict[keys])-1, last_rulestr))
             out.write("\n\n")
 
-def tree_to_rule_store(decisiontree, feature_names, class_label, threshold):
+def tree_to_rule_store(decisiontree, feature_names, class_label, threshold, tsunit):
     '''
-        @threshold: only rules with confidence exceeding this will be recorded
-
+        @param threshold: only rules with confidence exceeding this will be recorded
+        @param tsunit:  whether the rule is trained under seconds or minutes as base timestamp unit,
+            default is seconds. 
         @return a dictionary mapping device, state value, to the rules
     '''
     tree_ = decisiontree.tree_
@@ -131,8 +132,8 @@ def tree_to_rule_store(decisiontree, feature_names, class_label, threshold):
             fnme = name.find('_')
             name = name[fnme+1:]
             keywords = name.rsplit('_', 2)
-            leftrulestr = (rulestr + [convertImmediateRule(keywords, False)])
-            rightrulestr = (rulestr + [convertImmediateRule(keywords, True)])
+            leftrulestr = (rulestr + [convertImmediateRule(keywords, False, tsunit)])
+            rightrulestr = (rulestr + [convertImmediateRule(keywords, True, tsunit)])
 
             recurse(tree_.children_left[node], leftrulestr)
             recurse(tree_.children_right[node], rightrulestr)
@@ -142,7 +143,7 @@ def tree_to_rule_store(decisiontree, feature_names, class_label, threshold):
             keywords = class_label[pred].rsplit('_', 2)
 
             #5 tuple: (deviceName_state, startState, endState, stateChanged?, negate?)
-            retstate =  convertImmediateRule(keywords, False)
+            retstate =  convertImmediateRule(keywords, False, tsunit)
             if prediction_accuracy > threshold:
                 # map device to (startState, endState, stateChanged?, associated rule)
                 ruletuple = (retstate[1], retstate[2], retstate[3], rulestr)
