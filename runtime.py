@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('--do', action='store', dest='do', type=bool, default=True,
         help='Set to True if also checkign DO rules. If a rule gets satisfied for 2 seconds while \
             the device have not changed state, the monitor automatically changes the device state')
-    parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+    parser.add_argument('--withStateChange', action = 'store_true', dest='stateChange', default=False,
     help='Whether we process interval on interval and offset or on stateChanges.')
 
     #parse arguments for converting rule

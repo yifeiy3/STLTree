@@ -18,7 +18,7 @@ parser.add_argument('--interval', action = 'store', type=int, dest = 'interval',
 parser.add_argument('--offset', action = 'store', type=int, dest = 'offset', default=2,
     help='Number of timestamps we skip between training data intervals, this should be the same as \
         the interval used for training, default 2')
-parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+parser.add_argument('--withStateChange', action = 'store_true', dest='stateChange', default=False,
     help='Whether we process interval on interval and offset or on stateChanges.')
 
 args = parser.parse_args()

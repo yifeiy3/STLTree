@@ -36,11 +36,12 @@ def fl_G(p, signal):
     intv_end = math.floor((tau2 - t1) / t_intval) + 1
 
     robustdeg = np.zeros((Nobj, ))
+    #TODO: change issue about < and >=
     if ineq_dir == '<':
         for i in range(Nobj):
             robustdeg[i] = c - np.amax(signal.data[i, intv_start: intv_end, dim_idx], axis=0)
             #ith data, the interval part, and the device id
-    elif ineq_dir == '>':
+    elif ineq_dir == '>=':
         for i in range(Nobj):
             robustdeg[i] = np.amin(signal.data[i, intv_start: intv_end, dim_idx], axis=0) - c
     else:
@@ -51,11 +52,11 @@ def fl_F(p, signal):
     ineq_dir = p.ineq
     if ineq_dir == '<':
         newp = copy.deepcopy(p)
-        newp.ineq = '>'
+        newp.ineq = '>='
         res = -fl_G(newp, signal)
         #print(res)
         return res 
-    elif ineq_dir == '>':
+    elif ineq_dir == '>=':
         newp = copy.deepcopy(p)
         newp.ineq = '<'
         res = -fl_G(newp, signal)
@@ -81,10 +82,10 @@ def sl_FG(p, signal):
         for i in range(Nobj):
             a = signal.data[i, intv_start: intv_end, dim_idx]
             robustdeg[i] = c - computeMinMaxFilt(a, window_len)
-    elif ineq_dir == '>':
+    elif ineq_dir == '>=':
         for i in range(Nobj):
             a = signal.data[i, intv_start: intv_end, dim_idx]
-            robustdeg[i] = c - computeMaxMinFilt(a, window_len)        
+            robustdeg[i] = computeMaxMinFilt(a, window_len) - c        
     else:
         raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir))        
     return robustdeg
@@ -93,9 +94,9 @@ def sl_GF(p, signal):
     ineq_dir_t = p.ineq
     if ineq_dir_t == '<':
         newp = copy.deepcopy(p)
-        newp.ineq = '>'
+        newp.ineq = '>='
         return -sl_FG(newp, signal)
-    elif ineq_dir_t == '>':
+    elif ineq_dir_t == '>=':
         newp = copy.deepcopy(p)
         newp.ineq = '<'
         return -sl_FG(newp, signal)

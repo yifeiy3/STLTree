@@ -15,7 +15,7 @@ parser.add_argument('--interval', action = 'store', type=int, dest = 'interval',
     help='Number of timestamps per training data interval, default 10')
 parser.add_argument('--offset', action = 'store', type=int, dest = 'offset', default=2,
     help='Number of timestamps we skip between training data intervals, default 2')
-parser.add_argument('--withStateChange', action = 'store', type=bool, dest='stateChange', default=False,
+parser.add_argument('--withStateChange', action = 'store_true', dest='stateChange', default=False,
     help='Whether we process interval on interval and offset or on stateChanges.')
 
 #parsing input about tree stop condition
@@ -34,8 +34,8 @@ parser.add_argument('--Steps', action='store', type=int, dest='steps', default=2
 args = parser.parse_args()
 
 #our training data
-data_csv = ['Samsung/benchmark8.csv', 'Samsung/benchmark9.csv', 'Samsung/benchmark10.csv', 'Samsung/benchmark11.csv']
-validate_csv = ['Samsung/benchmark8.csv']
+data_csv = ['Samsung/event1.csv', 'Samsung/event2.csv', 'Samsung/event3.csv']
+validate_csv = ['Samsung/event1.csv']
 ar = []
 for csv_file in data_csv:
     signal_data = pd.read_csv(csv_file, index_col=None, header=None)
@@ -78,7 +78,7 @@ for i in range(len(training_set)):
     learnedTrees.append(T)
     labeldevice = alldevices[signals.labelidx - 1]
     lbldict = signals.classdict[labeldevice]
-    tree_output_file = "LearnedModel/treeprint/{0}.txt".format(labeldevice)
+    tree_output_file = "LearnedModel/treeprint/tr2/{0}.txt".format(labeldevice)
     tree_model_file = "LearnedModel/treemodel/{0}.pkl".format(labeldevice)
     with open(tree_output_file, "w") as out:
         out.write("LabelClass: {0}\n".format(labeldevice))

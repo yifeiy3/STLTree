@@ -36,11 +36,11 @@ class FLPrimitives(Primitives):
         self.param = l
     
     def convertIneq(self):
-        if self.oper == 'F':
-            if self.ineq == '<':
-                return '<='
-            else:
-                return '>='
+        # if self.oper == 'F':
+        #     if self.ineq == '<':
+        #         return '<='
+        #     else:
+        #         return '>='
         return self.ineq 
 
     def toString(self):
@@ -93,11 +93,11 @@ class SLPrimitives(Primitives):
         self.param = l
     
     def convertIneq(self):
-        if self.oper == 'FG':
-            if self.ineq == '<':
-                return '<='
-            else:
-                return '>='
+        # if self.oper == 'FG':
+        #     if self.ineq == '<':
+        #         return '<='
+        #     else:
+        #         return '>='
         return self.ineq
 
     def toString(self):

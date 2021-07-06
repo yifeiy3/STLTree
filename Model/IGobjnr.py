@@ -14,7 +14,7 @@ def InfoGainNoRobustness(p, signal):
     if not checkValidPrimitive(p, signal):
         return math.inf 
     robdeg = computeRobustness(p, signal)
-    (Strue, Sfalse, true_list, false_list) = partitionWeightsNoRobust(robdeg, signal.label, signal.lblclass, p.oper)
+    (Strue, Sfalse, true_list, false_list) = partitionWeightsNoRobust(robdeg, signal.label, signal.lblclass, p.ineq)
     #want to minimize this, as we are subtracting this term when computing info cost.
     return IG_costNoRobust(Strue, Sfalse, true_list, false_list)
 
@@ -24,7 +24,7 @@ def IG_costNoRobust(Strue, Sfalse, true_list, false_list):
     return Strue * H_Strue + Sfalse * H_SFalse
 
 def partitionWeightsNoRobust(robdeg, labels, lblclass, oper):
-    if oper == 'G' or oper == 'FG':
+    if oper == '<':
         Strue = robdeg > 0
         Sfalse = robdeg <= 0
     else:

@@ -114,12 +114,12 @@ def build_from_classdict(dataset, devices, classdict):
                     try:
                         dataset[k1, k2, i+1] = itemdict[dataset[k1, k2, i+1]]
                     except KeyError:
-                        print("unrecognized state: {0} for device {1}".format(
+                        print("WARNING: unrecognized state: {0} for device {1}".format(
                             dataset[k1, k2, :],
                             devices[i]
                         ))
                         dataset[k1, k2, i+1] = -1 #arbitrary class
-                        raise Exception("stop here")
+                        #it may be normal, the class encountered is not captured by training data, raise warning
     return dataset
 
 def separate_base_on_statechange(dataset, interval, stateChangedLoc):
@@ -128,6 +128,7 @@ def separate_base_on_statechange(dataset, interval, stateChangedLoc):
         add in idle state data traces so our rule do not over fit. we keep 
         it at a 1:2 ratio
     '''
+    print(dataset[9])
     ds_list = [] 
     total_changes = len(stateChangedLoc)
     print("stateChangedList: {0}".format(stateChangedLoc))
@@ -139,8 +140,8 @@ def separate_base_on_statechange(dataset, interval, stateChangedLoc):
         ds = ds[np.newaxis, :, :]
         ds_list.append(ds)
         statechangedict[k1].append(k2)
-   
-    max_idle_states = total_changes * 2 #1:2 ratio
+
+    max_idle_states = total_changes * 4 #1:2 ratio
     idlelist = []
     for i in range(len(dataset)):
         #everything before interval wont have enough space to generate data
@@ -149,7 +150,7 @@ def separate_base_on_statechange(dataset, interval, stateChangedLoc):
             start = k - interval + 1
             ids = dataset[i][np.newaxis, start:k+1, :]
             idlelist.append(ids)
-    
+
     random.shuffle(idlelist)
     for i in range(min(len(idlelist), max_idle_states)):
         ds_list.append(idlelist[i])

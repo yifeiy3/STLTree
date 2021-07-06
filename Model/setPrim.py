@@ -19,14 +19,14 @@ def primInit(signal_devices):
     for dim_idx in range(num_signal_dim):
         dimname = signal_devices[dim_idx]
         primitives.append(FLPrimitives('G', dim_idx, dimname, '<', flparam, math.inf))
-        primitives.append(FLPrimitives('G', dim_idx, dimname, '>', flparam, math.inf))
+        primitives.append(FLPrimitives('G', dim_idx, dimname, '>=', flparam, math.inf))
         primitives.append(FLPrimitives('F', dim_idx, dimname, '<', flparam, math.inf))
-        primitives.append(FLPrimitives('F', dim_idx, dimname, '>', flparam, math.inf))
+        primitives.append(FLPrimitives('F', dim_idx, dimname, '>=', flparam, math.inf))
         #We omit GF rules since the wording is not as useful in home IoT setting.
         # primitives.append(SLPrimitives('GF', dim_idx, dimname, '<', slparam, math.inf))
         # primitives.append(SLPrimitives('GF', dim_idx, dimname, '>', slparam, math.inf))
         primitives.append(SLPrimitives('FG', dim_idx, dimname, '<', slparam, math.inf))
-        primitives.append(SLPrimitives('FG', dim_idx, dimname, '>', slparam, math.inf))
+        primitives.append(SLPrimitives('FG', dim_idx, dimname, '>=', slparam, math.inf))
     
     return primitives
     
