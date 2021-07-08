@@ -26,7 +26,7 @@ def IG_cost(Strue, Sfalse, true_list, false_list):
     return Strue * H_Strue + Sfalse * H_SFalse
 
 def partitionWeights(robdeg, labels, lblclass, oper):
-    if oper == '<':
+    if oper == '>':
         Strue = robdeg > 0
         Sfalse = robdeg <= 0
     else: #due to handling for 0-1 variables

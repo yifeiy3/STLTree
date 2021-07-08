@@ -24,7 +24,7 @@ def IG_costNoRobust(Strue, Sfalse, true_list, false_list):
     return Strue * H_Strue + Sfalse * H_SFalse
 
 def partitionWeightsNoRobust(robdeg, labels, lblclass, oper):
-    if oper == '<':
+    if oper == '>':
         Strue = robdeg > 0
         Sfalse = robdeg <= 0
     else:
