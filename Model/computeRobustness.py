@@ -103,7 +103,7 @@ def sl_GF(p, signal):
     else:
         raise Exception("invalid ineq_dir in robustness: {0}".format(ineq_dir_t))
 
-def computeMinMaxFilt(a, windowlen):
+def computeMaxMinFilt(a, windowlen):
     '''
         input: state for our device in a numpy array, 
                our window size
@@ -114,7 +114,7 @@ def computeMinMaxFilt(a, windowlen):
     return max(minlst)
 
 
-def computeMaxMinFilt(a, windowlen):
+def computeMinMaxFilt(a, windowlen):
     '''
         input: state for our device in a numpy array, 
                our window size

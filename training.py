@@ -34,8 +34,8 @@ parser.add_argument('--Steps', action='store', type=int, dest='steps', default=2
 args = parser.parse_args()
 
 #our training data
-data_csv = ['Samsung/event1.csv', 'Samsung/event2.csv', 'Samsung/event3.csv']
-validate_csv = ['Samsung/event1.csv']
+data_csv = ['Samsung/test1.csv', 'Samsung/test2.csv', 'Samsung/test3.csv']
+validate_csv = ['Samsung/test1.csv']
 ar = []
 for csv_file in data_csv:
     signal_data = pd.read_csv(csv_file, index_col=None, header=None)
@@ -78,7 +78,7 @@ for i in range(len(training_set)):
     learnedTrees.append(T)
     labeldevice = alldevices[signals.labelidx - 1]
     lbldict = signals.classdict[labeldevice]
-    tree_output_file = "LearnedModel/treeprint/tr2/{0}.txt".format(labeldevice)
+    tree_output_file = "LearnedModel/treeprint/{0}.txt".format(labeldevice)
     tree_model_file = "LearnedModel/treemodel/{0}.pkl".format(labeldevice)
     with open(tree_output_file, "w") as out:
         out.write("LabelClass: {0}\n".format(labeldevice))

@@ -13,7 +13,8 @@ class FLPrimitiveProblem(Annealer):
         '''
             @param pinit: initial state of the primitive, when passed in should be an
             primitive object with all parameters being Nan
-            @param userobustness: whether we use robustness measure in our objective function
+            @param userobustness: whether we use robustness measure in our objective function,
+            we use it for continuous variables
         '''
         initialstate = pinit.param
         lb = spacebounds[pinit.dim, 0]
@@ -101,8 +102,14 @@ class SLPrimitiveProblem(Annealer):
             return InfoGainNoRobustness(self.state, self.signal)
 
 
-def primitiveOptimization(problem):
+def primitiveOptimization(problem, signal, continuous):
     '''
         returns (State/our primitive, objective function value)
+        @param continous: whether we are learning primitive about a continuous variable,
+        if continuous variable, we use no robustness objective value to compare to other discrete
+        variable rules
     '''
-    return problem.anneal()
+    primitive, objval = problem.anneal()
+    if continuous:
+        objval = InfoGainNoRobustness(primitive, signal)
+    return primitive, objval
