@@ -174,8 +174,7 @@ def evaluate(treemodel, feature_set, gt, encoder, class_label, writefile):
                         outfile.write("\t" + str(cond) + "\n")
 
 if __name__ == '__main__':
-    data_csv = ['../Samsung/test.csv', '../Samsung/test1.csv', '../Samsung/test2.csv', '../Samsung/test3.csv',
-    '../Samsung/test4.csv', '../Samsung/test5.csv', '../Samsung/test6.csv', '../Samsung/test7.csv']
+    data_csv = ['../Samsung/benchmark8.csv', '../Samsung/benchmark9.csv', '../Samsung/benchmark10.csv']
 
     parser = argparse.ArgumentParser(description='Train a tree to learn the immediate rules in an IoT environment')
     parser.add_argument('--maxDepth', action = 'store', type=int, dest = 'depth', default = 3,
@@ -202,7 +201,7 @@ if __name__ == '__main__':
     cd = data_process(heads, ar, gap_dict) #header, data
 
     treemodels = train_tree(cd, args.depth, args.threshold, args.tsunit)
-    eval_csv = ['../Samsung/test.csv']
+    eval_csv = ['../Samsung/benchmark8.csv']
     evar = []
     for csv_file in eval_csv:
         eval_data = pd.read_csv(csv_file, index_col=0)

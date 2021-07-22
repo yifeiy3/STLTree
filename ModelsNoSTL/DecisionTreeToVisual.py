@@ -142,7 +142,7 @@ def tree_to_rule_store(decisiontree, feature_names, class_label, threshold, tsun
             prediction_accuracy = tree_.value[node][0, pred]/np.sum(tree_.value[node])
             keywords = class_label[pred].rsplit('_', 2)
 
-            #5 tuple: (deviceName_state, startState, endState, stateChanged?, negate?)
+            #6 tuple: (deviceName_state, startState, endState, stateChanged?, negate?, tsunit)
             retstate =  convertImmediateRule(keywords, False, tsunit)
             if prediction_accuracy > threshold:
                 # map device to (startState, endState, stateChanged?, associated rule)

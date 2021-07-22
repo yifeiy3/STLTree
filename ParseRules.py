@@ -94,12 +94,15 @@ def convertImmediateDoRules(parsedDict):
 
     for device in parsedDict.keys():
         for stateChange in parsedDict[device].keys(): 
+            #No state change need to happen for DO rules
+            if stateChange[0] == stateChange[1]:
+                continue
             allValueRules = parsedDict[device][stateChange]
             #each rule is a five tuple of (device_state, stateBefore, stateAfter, stateChanged?, negate)
             for individualRule in allValueRules:
                 for deviceName, stateBefore, stateAfter, changed, negate, _tsunit in individualRule:
                     if not changed and not negate: 
-                        #the device stays in the state, not intereting in checking do rules
+                        #the device stays in the state, not interesting in checking do rules
                         #since we only monitor device changes
                         continue 
 
@@ -288,9 +291,11 @@ def convertUserDefinedRules(userfile):
             #obtain cartisian product of each item in cond, since they occur in 'or' relation within each item,
             #and between items give and relation
             allrulecombs = list(itertools.product(*cond))
+            #print("all rule combs: {0}".format(allrulecombs))
             for items in allrulecombs:
                 individualRuleList = []
                 for ruletuples in items:
+                    print(ruletuples)
                     deviceInfo, timeInfo = ruletuples
                     deviceName = deviceInfo[1] + '_' + deviceInfo[0] #format: deviceName_deviceState
                     possibleIneq, possibleState = handleContinuous(deviceInfo[2]) #handle continuous data
@@ -308,23 +313,35 @@ def convertUserDefinedRules(userfile):
                         timeBound = (lb, afterTime, -1)
                         individualRuleList.append((deviceName, timeInfo[2], possibleIneq, timeBound, [possibleState], 'seconds'))
                         
-            ruleList.append((device, dontstateVal, individualRuleList))
+                ruleList.append((device, dontstateVal, individualRuleList))
     return ruleList
 
 if __name__ == '__main__':
-    cdict = {}
-    # userRuleList = convertUserDefinedRules('./UserDefinedRules/rule.txt')
-    # print(userRuleList)
-    with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
-        cdict = pickle.load(dictfile)
-    #doDict = convertDoRules(convertRules(cdict, user_defined='UserDefinedRules/rule.txt'))
-    print(cdict.keys())
-    gapd, immediate, xd = convertRules(cdict)
-    simple_imme = immediate['Door_lock']
-    print("Immediate Rules: {0}".format(simple_imme))
-    print("________________________________________")
-    print("Converted Immediate Rules: {0}".format(convertImmediateDoRules({'Door_lock':simple_imme})))
-    # for keys in doDict.keys():
-    #     print("key: {0}".format(keys))
-    #     print(doDict[keys])
-    #     print('_____________________________________________')
+    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off'], 'seconds'), 
+                                        ('Thermostat_temperature', 'F', '<=', (9, 2, -1), ['72'], 'seconds')],
+                                     [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'], 'seconds')],
+                                     ],
+                              'unlocked': []},
+            'Virtual Switch 2_switch': {'on': [], 'off': []}}
+    userRuleList = convertUserDefinedRules('./UserDefinedRules/rule.txt')
+    print(userRuleList)
+    # with open("LearnedModel/training_classdict.pkl", "rb") as dictfile:
+    #     cdict = pickle.load(dictfile)
+    # doDict = convertDoRules(ruledict)
+    # devices = ['Virtual Switch 2_switch' , 'Virtual Switch 3_switch' ,'Virtual Switch1_switch' ,'Door_lock']
+    # gapd, immediate, xd = convertRules(devices)
+    # print(immediate)
+    # simple_imme = {
+    #     ('unlocked', 'locked'): 
+    #         [[('Virtual Switch 3_switch', 'off', 'on', True, False, 'seconds'), 
+    #         ('Virtual Switch 3_switch', 'on', 'off', True, False, 'seconds')]], 
+    #     ('locked', 'unlocked'): [[('Virtual Switch 3_switch', 'off', 'on', True, True, 'seconds')]]}
+
+    # print("Immediate Rules: {0}".format(simple_imme))
+    # print("________________________________________")
+    # print("Converted Immediate Rules: {0}".format(convertImmediateDoRules({'Door_lock':simple_imme})))
+    # # # for keys in doDict.keys():
+    # # #     print("key: {0}".format(keys))
+    # # #     print(doDict[keys])
+    # # #     print('_____________________________________________')
+

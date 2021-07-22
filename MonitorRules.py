@@ -3,6 +3,7 @@ import datetime
 import time 
 import functools
 import copy
+import math
 
 def sec_diff(date_ref, date, timestampunit):
     '''
@@ -196,202 +197,209 @@ class MonitorRules():
         '''
         offsethi, offsetlo, offsetgap, offsetPSTL = offsetInfo
         offsetgap = max(0, offsetgap) #since for first level PSTL we set offsetgap to be -1
-        offsethi, offsetlo = offsethi + offsetgap, offsetlo + offsetgap #add gap for FG rules.
+        offsethi, offsetlo = offsethi, offsetlo + offsetgap #add gap for FG rules.
 
         hi, lo, gap = interval 
         satisfied = False 
         #if its of rule G or GF, we have to wait at least offsethi seconds for our action rule
-        #to be true, thus we can just call checkPSTL on modified interval.
+        #to be true, but we can wait for as long as we want assuming no state change happens.
         if offsetPSTL == 'G' or offsetPSTL == 'GF': 
-            modifiedintval = (max(0, hi - offsethi), max(0, lo - offsethi), gap)
-            satisfied = self._checkPTSL(currdate, oper, modifiedintval, possibleStates, currentStates, tsunit)
-            return satisfied, [(offsethi, offsethi)]
-        else:
-            if oper == 'G': 
-                satisfied = True 
-                first_idx = -1
-                last_idx_outside_range = -2
-                modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
+            offsetlo = offsethi
+            offsethi = math.inf
 
-                intvStart = -1
-                startDate = -1
-                satisfyingIntvList = []
-                for i in range(len(currentStates)):
-                    date, value = currentStates[i]
-                    datediff = sec_diff(date, currdate, tsunit)
-                    if datediff >= modifiedintvallo and datediff <= modifiedintvalhi:
-                        if first_idx < 0:
-                            first_idx = i 
-                        if intvStart < 0 and self._checkValid(possibleStates, oper, value):
-                            #have to wait hi amount of seconds for G.
-                            intvStart = max(offsetlo, hi - datediff)
-                            startDate = datediff 
-                        elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
-                            satisfyingIntvList.append((intvStart, intvStart + (startDate - datediff)))
-                            intvStart = -1
-                            startDate = -1
-                    if datediff > modifiedintvalhi:
-                        last_idx_outside_range = i 
+        if oper == 'G': 
+            satisfied = True 
+            first_idx = -1
+            last_idx_outside_range = -2
+            modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
 
-                first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
+            intvStart = -1
+            startDate = -1
+            satisfyingIntvList = []
+            for i in range(len(currentStates)):
+                date, value = currentStates[i]
+                datediff = sec_diff(date, currdate, tsunit)
+                if datediff >= modifiedintvallo and datediff <= modifiedintvalhi:
+                    if first_idx < 0:
+                        first_idx = i 
+                    if intvStart < 0 and self._checkValid(possibleStates, oper, value):
+                        #have to wait hi amount of seconds for G.
+                        intvStart = max(offsetlo, hi - datediff)
+                        startDate = datediff 
+                    elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
+                        satisfyingIntvList.append((intvStart, intvStart + (startDate - datediff)))
+                        intvStart = -1
+                        startDate = -1
+                if datediff > modifiedintvalhi:
+                    last_idx_outside_range = i 
 
-                if intvStart >= 0 and intvStart + (hi - lo + 1) <= offsethi: #everything after will be satisfied, append this
-                    satisfied = True
-                    satisfyingIntvList.append((intvStart, offsethi)) #check behavior before the first interval
+            first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
 
-                firstStart, firstEnd = -1, -1
-                if satisfyingIntvList:
-                    firstStart, firstEnd = satisfyingIntvList[0]
+            if intvStart >= 0 and intvStart + (hi - lo + 1) <= offsethi: #everything after will be satisfied, append this
+                satisfied = True
+                satisfyingIntvList.append((intvStart, offsethi)) #check behavior before the first interval
 
-                if first_idx < 0:
-                    return False, [] 
-                elif first_idx == 0: #nothing happened before the interval
-                    print("first index = 0, nothing to be done here")
-                elif first_idx == len(currentStates): #nothing happened within the interval
-                    satisfyingIntvList = [(offsetlo, offsethi)]
-                else:
-                    date, value = currentStates[first_idx - 1]
-                    nextdate, _nextvalue = currentStates[first_idx]
-                    if sec_diff(nextdate, currdate, tsunit) < modifiedintvallo: #nothing happened within the interval
-                        return satisfied, [(offsetlo, offsethi)]
-                        
-                    if self._checkValid(possibleStates, oper, value) and nextdate == firstStart: #then any time before our first interval also works, extend our interval.
-                        satisfyingIntvList.pop(0)
-                        satisfyingIntvList.insert(0, (offsetlo, firstEnd))
+            firstStart, firstEnd = -1, -1
+            if satisfyingIntvList:
+                firstStart, firstEnd = satisfyingIntvList[0]
 
-                reslist = []
-                #for each found interval, we need to know that they have to be at least the size of [lo, hi].
-                for start, end in satisfyingIntvList:
-                    duration = (end - start) - (hi - lo)
-                    if duration >= 0:
-                        reslist.append((start, start + duration))
-                return len(reslist) > 0, reslist
-                
-            elif oper == 'F':
-                pStates = [(sec_diff(date, currdate, tsunit), value) for (date, value) in currentStates]
-                #Since the action rule for F or FG can be immediately satisfied after offsetlo seconds have passed.
-                modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
-                intvStart = -1
-                startDate = -1
-                satisfyingIntvList = []
-                for date, value in pStates:
-                    if date <= modifiedintvalhi and date >= modifiedintvallo:
-                        if intvStart < 0 and self._checkValid(possibleStates, oper, value):
-                            #we have to wait at least lo - date seconds to satisfy rule
-                            intvStart = lo - date
-                            startDate = date
-                            satisfied = True 
-                        elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
-                            #we can't wait more than (hi - lo) seconds from intvStart, since then the intvStart event won't
-                            #satisfy our rule anymore.
-                            endpoint = min(intvStart + (hi - lo), intvStart + (startDate - date), offsethi)
-                            if endpoint >= offsetlo:
-                                intvStart = max(offsetlo, intvStart) #we have to wait at least offsetlo seconds
-                                satisfyingIntvList.append((intvStart, endpoint))
-                            intvStart = -1
-                            startDate = -1
+            if first_idx < 0:
+                return False, [] 
+            elif first_idx == 0: #nothing happened before the interval
+                print("first index = 0, nothing to be done here")
+            elif first_idx == len(currentStates): #nothing happened within the interval
+                satisfyingIntvList = [(offsetlo, offsethi)]
+            else:
+                date, value = currentStates[first_idx - 1]
+                nextdate, _nextvalue = currentStates[first_idx]
+                if sec_diff(nextdate, currdate, tsunit) < modifiedintvallo: #nothing happened within the interval
+                    return satisfied, [(offsetlo, offsethi)]
+                    
+                if self._checkValid(possibleStates, oper, value) and nextdate == firstStart: #then any time before our first interval also works, extend our interval.
+                    satisfyingIntvList.pop(0)
+                    satisfyingIntvList.insert(0, (offsetlo, firstEnd))
 
-                if intvStart >= 0: #need to handle the last interval, we can't wait more than offsethi seconds.
-                    intvStart = max(offsetlo, intvStart)
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), offsethi)))
-                return satisfied, satisfyingIntvList
+            reslist = []
+            #for each found interval, we need to know that they have to be at least the size of [lo, hi].
+            for start, end in satisfyingIntvList:
+                duration = (end - start) - (hi - lo)
+                if duration >= 0:
+                    reslist.append((start, start + duration))
+            return len(reslist) > 0, reslist
             
-            elif oper == 'FG':
-                intvStart = -1
-                startDate = -1
-                satisfyingIntvList = []
+        elif oper == 'F':
+            pStates = [(sec_diff(date, currdate, tsunit), value) for (date, value) in currentStates]
+            #Since the action rule for F or FG can be immediately satisfied after offsetlo seconds have passed.
+            modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
+            satisfyingIntvList = []
+            for date, value in pStates:
+                if date <= modifiedintvalhi and date >= modifiedintvallo:
+                    if self._checkValid(possibleStates, oper, value):
+                        #we have to wait at least lo - date seconds to satisfy rule
+                        intvStart = lo - date
+                        satisfied = True 
+                        #we can't wait more than (hi - lo) seconds from intvStart, since then the intvStart event won't
+                        #satisfy our rule anymore.
+                        endpoint = min(intvStart + (hi - lo), offsethi)
+                        if endpoint >= offsetlo:
+                            intvStart = max(offsetlo, intvStart) #we have to wait at least offsetlo seconds
+                            satisfyingIntvList.append((intvStart, endpoint))
+                            
+            #we do a post processing to avoid overlaps, we note the start time for interval must appear in order
+            reslist = []
+            currstartpt, currendpt = -1, -1
+            for startpt, endpt in satisfyingIntvList:
+                if startpt < currendpt: #overlapping interval, we extend.
+                    if endpt > currendpt:
+                        currendpt = endpt 
+                else: #a separated interval 
+                    reslist.append((currstartpt, currendpt))
+                    currstartpt = startpt 
+                    currendpt = endpt
+            reslist.append((currstartpt, currendpt)) #add in last interval
+            return satisfied, reslist[1:]
+        
+        elif oper == 'FG':
+            satisfyingIntvList = []
 
-                for i in range(len(currentStates)):
-                    date, value = currentStates[i]
-                    modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
-                    datediff = sec_diff(date, currdate, tsunit)
-                    if datediff <= modifiedintvalhi and datediff >= modifiedintvallo:
-                        if intvStart < 0 and self._checkValid(possibleStates, oper, value):
-                            j = i+1
-                            if j >= len(currentStates):
-                                satisfied = True 
-                                intvStart = lo - datediff
-                                startDate = datediff
-                            else:
-                                while j < len(currentStates):
-                                    t_date, _t_value = currentStates[j]
-                                    t_datediff = sec_diff(t_date, currdate, tsunit)
-                                    if intvStart < 0 and datediff - t_datediff > gap:
-                                        satisfied = True 
-                                        intvStart = lo - datediff
-                                        startDate = datediff
-                                        break
-                                    j = j+1
-                        elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
-                            #we also need to account the time needed for the gap due to second level PSTL here.
-                            endpoint = min(intvStart + (hi - lo), intvStart + (startDate - datediff) - gap, offsethi)
+            for i in range(len(currentStates)):
+                date, value = currentStates[i]
+                modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
+                datediff = sec_diff(date, currdate, tsunit)
+                if datediff <= modifiedintvalhi and datediff >= modifiedintvallo:
+                    if intvStart < 0 and self._checkValid(possibleStates, oper, value):
+                        j = i+1
+                        if j >= len(currentStates):
+                            satisfied = True 
+                            intvStart = lo - datediff
+                            endpoint = min(intvStart + (hi - lo), offsethi)
                             if endpoint >= offsetlo:
                                 intvStart = max(offsetlo, intvStart)
                                 satisfyingIntvList.append((intvStart, endpoint))
-                            intvStart = -1
-                            startDate = -1
-
-                if intvStart > 0:
-                    intvStart = max(offsetlo, intvStart)
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), offsethi)))
-                return satisfied, satisfyingIntvList
+                        else:
+                            while j < len(currentStates):
+                                t_date, _t_value = currentStates[j]
+                                t_datediff = sec_diff(t_date, currdate, tsunit)
+                                if intvStart < 0 and datediff - t_datediff > gap:
+                                    satisfied = True 
+                                    intvStart = lo - datediff
+                                    endpoint = min(intvStart + (hi - lo), offsethi)
+                                    if endpoint >= offsetlo:
+                                        intvStart = max(offsetlo, intvStart)
+                                        satisfyingIntvList.append((intvStart, endpoint))
+                                    break
+                                j = j+1
             
-            else: #GF case
-                intvStart = -1
-                satisfyingIntvList = []
+            #post processing to avoid overlaps
+            reslist = []
+            currstartpt, currendpt = -1, -1
+            for startpt, endpt in satisfyingIntvList:
+                if startpt < currendpt: #overlapping interval, we extend.
+                    if endpt > currendpt:
+                        currendpt = endpt 
+                else: #a separated interval 
+                    reslist.append((currstartpt, currendpt))
+                    currstartpt = startpt 
+                    currendpt = endpt
+            reslist.append((currstartpt, currendpt)) #add in last interval
+            return satisfied, reslist[1:]
+        
+        else: #GF case
+            intvStart = -1
+            satisfyingIntvList = []
 
-                #if i > lo, we cant check for globally all satisfiable since we dont know events yet, can simply skip.
-                rangeend = min(offsethi+1, lo + 1)
+            #if i > lo, we cant check for globally all satisfiable since we dont know events yet, can simply skip.
+            rangeend = min(offsethi+1, lo + 1)
 
-                for i in range(offsetlo, rangeend, 1):
-                    modifiedhi, modifiedlo = (hi-i, lo - i)
+            for i in range(offsetlo, rangeend, 1):
+                modifiedhi, modifiedlo = (hi-i, lo - i)
 
-                    validStates = []
-                    for date, value in currentStates[: -1]:
-                        datediff = sec_diff(date, currdate, tsunit)
-                        if datediff <= modifiedhi and datediff >= modifiedlo and self._checkValid(possibleStates, oper, value):
-                            validStates.append((datediff, value))
+                validStates = []
+                for date, value in currentStates[: -1]:
+                    datediff = sec_diff(date, currdate, tsunit)
+                    if datediff <= modifiedhi and datediff >= modifiedlo and self._checkValid(possibleStates, oper, value):
+                        validStates.append((datediff, value))
 
-                    lastStateAdded = False 
-                    dateLast, dateValue = currentStates[-1]
-                    dateLastDiff = sec_diff(dateLast, currdate, tsunit)
-                    if dateLastDiff <= modifiedhi and dateLastDiff >= modifiedlo:
-                        if self._checkValid(possibleStates, oper, dateValue):
-                            validStates.append((dateLastDiff, dateValue))    
-                        lastStateAdded = True 
-                
-                    if ((hi - lo) // gap > len(validStates)): #have more non overlapping intervals than state changes
-                        if lastStateAdded:
-                            return satisfied, satisfyingIntvList 
-                            #any interval happening after will not satisfy our rule since not enough changes for intervals
-                        continue
+                lastStateAdded = False 
+                dateLast, dateValue = currentStates[-1]
+                dateLastDiff = sec_diff(dateLast, currdate, tsunit)
+                if dateLastDiff <= modifiedhi and dateLastDiff >= modifiedlo:
+                    if self._checkValid(possibleStates, oper, dateValue):
+                        validStates.append((dateLastDiff, dateValue))    
+                    lastStateAdded = True 
+            
+                if ((hi - lo) // gap > len(validStates)): #have more non overlapping intervals than state changes
+                    if lastStateAdded:
+                        return satisfied, satisfyingIntvList 
+                        #any interval happening after will not satisfy our rule since not enough changes for intervals
+                    continue
 
-                    possibleIntervals = [(max(x-gap, 0), x) for x in range(modifiedlo, modifiedhi+1, 1)]
+                possibleIntervals = [(max(x-gap, 0), x) for x in range(modifiedlo, modifiedhi+1, 1)]
 
-                    currentlySatisfied = True #whether our current choice of i satisfy the rule
+                currentlySatisfied = True #whether our current choice of i satisfy the rule
 
-                    for lo_int, hi_int in possibleIntervals:
-                        hasSatisfied = False
-                        for date, value in validStates:
-                            if date >= lo_int and date <= hi_int:
-                                hasSatisfied = True 
-                                break
-                        #None of the valid states satisfies our rule
-                        if not hasSatisfied:
-                            if intvStart >= 0:
-                                satisfyingIntvList.append((intvStart, i-1))
-                                intvStart = -1
-                            currentlySatisfied = False 
+                for lo_int, hi_int in possibleIntervals:
+                    hasSatisfied = False
+                    for date, value in validStates:
+                        if date >= lo_int and date <= hi_int:
+                            hasSatisfied = True 
                             break
-                    
-                    #all intervals have been satisfied.
-                    if currentlySatisfied and intvStart < 0:
-                        intvStart = i 
-                        satisfied = True
+                    #None of the valid states satisfies our rule
+                    if not hasSatisfied:
+                        if intvStart >= 0:
+                            satisfyingIntvList.append((intvStart, i-1))
+                            intvStart = -1
+                        currentlySatisfied = False 
+                        break
+                
+                #all intervals have been satisfied.
+                if currentlySatisfied and intvStart < 0:
+                    intvStart = i 
+                    satisfied = True
 
-                if intvStart > 0:
-                    satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), rangeend)))
-                return satisfied, satisfyingIntvList
+            if intvStart > 0:
+                satisfyingIntvList.append((intvStart, min(intvStart + (hi - lo), rangeend)))
+            return satisfied, satisfyingIntvList
         
     def _findWaitTime(self, timeIntervals, offsetInfo):
         '''
@@ -521,7 +529,7 @@ class MonitorRules():
                             offset = (intval[0], intval[1], intval[2], oper)
                             tunit = tsunit #each rule's time stamp unit must be the same. Since we can only learn minute rules or second rules,
                                            #not a combination of both.
-                            temprule.pop(i) #we don't need to check validity of the current action itself.
+                            temprule.pop(i) #we don't need to check validity of the current action itself, it will be valid as long as offset is satisfied
                             break
                     satisfactory, timeWait = self._checkOneDoRule(temprule, currentDate, offset)
                     if satisfactory:
@@ -716,6 +724,9 @@ class MonitorRules():
             return value1 == value2
 
     def _checkImmediate(self, currdate, startState, endState, stateChanged, negate, currentStates, gap, tsunit):
+        if not currentStates:
+            return False 
+
         lastChangedEndTime, lastChangedEndState = currentStates[-1]
 
         satisfied = False 
