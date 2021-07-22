@@ -53,7 +53,7 @@ class Scheduler():
                 else:
                     timedelay = max(timedelay, 1)
                 newjob = self.scheduler.add_job(
-                    lambda: self._sendCommand(device, newStateValue, theRule, immediate),
+                    lambda: self._sendCommand(device, newStateValue, theRule, immediate, tsunit),
                     'date',
                     run_date=datetime.datetime.now() + datetime.timedelta(seconds=timedelay)
                 )

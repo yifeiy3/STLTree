@@ -36,7 +36,7 @@ class MyServer(BaseHTTPRequestHandler):
         currentquery = (query['date'][0], query['device'][0], query['state'][0], query['value'][0])
         stateChgs = []
 
-        #TODO: currently this important thing does nothing, may need to expand this feature?
+        #if the devices in Samsung Smartapp monitor is not all the devices in the environment, but for important devices only
         if self.important:
             for devices in devicedict.keys():
                 deviceid, states = devicedict[devices]

@@ -624,11 +624,12 @@ class MonitorRules():
         
         anticipatedChgs = {}
 
-        if self.doRules is not None: 
-            anticipatedChgs = self._checkDoRules(currChg, self.doRules)
-            self._checkImmediateDoRules(anticipatedChgs, currChg) #add in the immediate rules in anticipated changes
+        if not boolresult: #we should only mark the change as valid and consider DO rules if the change does not violate DONT rule already.
+            if self.doRules is not None: 
+                anticipatedChgs = self._checkDoRules(currChg, self.doRules)
+                self._checkImmediateDoRules(anticipatedChgs, currChg) #add in the immediate rules in anticipated changes
 
-        self.updateState(currdate, currdevice, currState, currValue) #add the change after rule checking
+            self.updateState(currdate, currdevice, currState, currValue) 
         return boolresult, shouldstate, anticipatedChgs
     
     def _checkImmediateDoRuleOnce(self, currChg, ruledict, lastDeviceState):
