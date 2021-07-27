@@ -7,6 +7,6 @@ def primitiveCheckSat(prim, signal):
         for a list of signal, check whether each satisfies our primitive
     '''
     robdeg = computeRobustness(prim, signal)
-    if prim.ineq == '<' :
-        return robdeg, (robdeg > 0) #0-1 variable issue
-    return robdeg, (robdeg >= 0)
+    if prim.ineq == '<=' :
+        return robdeg, (robdeg >= 0) #0-1 variable issue
+    return robdeg, (robdeg > 0)

@@ -36,7 +36,6 @@ def fl_G(p, signal):
     intv_end = math.floor((tau2 - t1) / t_intval) + 1
 
     robustdeg = np.zeros((Nobj, ))
-    #TODO: change issue about < and >=
     if ineq_dir == '<=':
         for i in range(Nobj):
             robustdeg[i] = c - np.amax(signal.data[i, intv_start: intv_end, dim_idx], axis=0)

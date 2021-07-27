@@ -95,11 +95,21 @@ class MonitorRules():
         hi, lo, gap = interval
 
         if oper == 'F':
-            validStates = [(sec_diff(date, currdate, tsunit), value) for (date, value) in currentStates if self._checkValid(possibleStates, oper, value)]
-            for date, value in validStates:
-                if date <= hi and date >= lo:
-                    return True  
-            return False 
+            first_idx = -1
+            for i in range(len(currentStates)):
+                date, value = currentStates[i]
+                datediff = sec_diff(date, currdate, tsunit)
+                if datediff >= lo and datediff <= hi:
+                    if first_idx < 0:
+                        first_idx = i 
+                    if self._checkValid(possibleStates, oper, value):
+                        return True 
+            lastoccur = first_idx - 1
+            if lastoccur < 0:
+                return False 
+            else:
+                _ld, lastvalue = currentStates[lastoccur]
+                return self._checkValid(possibleStates, oper, lastvalue) 
 
         elif oper == 'G':
             satisfied = True 
@@ -129,23 +139,33 @@ class MonitorRules():
             return satisfied
 
         elif oper == 'FG':
+            first_idx = -1
+            first_date = -1
+
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                print("datediff: {0}".format(datediff))
-                if datediff <= hi and datediff >= lo and self._checkValid(possibleStates, oper, value):
-                    j = i+1
-                    if j >= len(currentStates):
-                        return True # no state change has happend since. 
-                    while j < len(currentStates):
-                        t_date, t_value = currentStates[j]
-                        t_datediff = sec_diff(t_date, currdate, tsunit)
-                        if datediff - t_datediff > gap:
-                            return True 
-                        else:
-                            if not self._checkValid(possibleStates, oper, t_value):
-                                break 
-                            j = j+1
+                if datediff <= hi and datediff >= lo:
+                    if first_idx < 0:
+                        first_idx = i
+                        first_date = date
+                    if self._checkValid(possibleStates, oper, value):
+                        j = i+1
+                        if j >= len(currentStates):
+                            return True # no state change has happend since. 
+                        while j < len(currentStates):
+                            t_date, t_value = currentStates[j]
+                            t_datediff = sec_diff(t_date, currdate, tsunit)
+                            if datediff - t_datediff > gap:
+                                return True 
+                            else:
+                                if not self._checkValid(possibleStates, oper, t_value):
+                                    break 
+                                j = j+1
+            if first_idx - 1 > 0:
+                ld, lastvalue = currentStates[first_idx - 1]
+                return self._checkValid(possibleStates, oper, lastvalue) and sec_diff(ld, first_date, tsunit) > gap 
+                
             return False #no F has happend
 
         else: #GF case 
@@ -185,11 +205,14 @@ class MonitorRules():
         ruledict = self.rules[keyname]
         keys = [key for key in ruledict.keys() if key != currValue]
         #we only need to worry about the rules that does not match curr value being satisfied
+        resvalue = currValue
+        satisfied = True
         for key in keys:
             for rules in ruledict[key]:
                 if self._checkOneRule(rules, currdate):
-                    return False, key #the device should be in this state instead 
-        return True, currValue
+                    satisfied = False
+                    resvalue = key #the device should be in this state instead 
+        return satisfied, resvalue
 
     def _checkPTSLonDO(self, currdate, oper, interval, possibleStates, currentStates, offsetInfo, tsunit):
         '''
@@ -709,7 +732,7 @@ class MonitorRules():
                     val, rule, _imme = anticipateddict[timedelay][device]
                     print("WARNING: direct conflict between rules: {0} \n and rule: {1} \n, with the first rule changing \
                     device {2} to value {3}, second to value {4}".format(rule, theRule, device, val, newStateValue))
-                #if multiple rules are satisfied for the same device, we pick the last one
+                #if multiple rules are satisfied for the same device, we prioritize immediate rule and pick the last one
                 anticipateddict[timedelay][device] =  (newStateValue, theRule, True, tsunit) 
             else:
                 anticipateddict[timedelay] ={}
@@ -791,15 +814,19 @@ class MonitorRules():
         #same starting state but different ending state
         keys = [key for key in ruledict.keys() if (self._checkStateEql(key[0], lastDeviceState[1], gap) and not self._checkStateEql(key[1], currValue, gap))]
 
+        resvalue = currValue
+        satisfied = True 
+
         for key in keys: 
             for rules in ruledict[key]:
                 satisfiedrule, _tsunit = self._checkOneImmediateRule(rules, currdate)
                 if satisfiedrule:
-                    return False, key[1] #should be in this endState instead
+                    satisfied = False 
+                    resvalue = key[1] #should be in this endState instead
         
-        return True, currValue
+        return satisfied, resvalue
         
-    def checkCommand(self, dname, dstate, dvalue, rulestr, immediate, tsunit):
+    def checkCommand(self, dname, dstate, dvalue, rulestr, immediate, tsunit, nextsecond):
         '''
             As a final check for the rule before it is sent to Samsung Smartthings hub to change device state,
             this fuction does:
@@ -809,27 +836,42 @@ class MonitorRules():
             if it is an immediate rule, only step 2 will be checked.
 
             @param tsunit:  whether the rule is trained under seconds or minutes as base timestamp unit,
-            default is seconds. We wait for one tsunit for device to change state for non immediate rules.
+            default is seconds.
+            @param nextsecond: to avoid race condition, we sometimes need to check nextsecond events, this = 1 if we
+            check next second, 0 otherwise
         '''
-        currDate = datetime.datetime.now(datetime.timezone.utc) #Smartthings uses UTC as time reference
-        currDateToStr = currDate.strftime("%Y-%m-%dT%H:%M:%S") #convert to string for sec-diff.
-
+        currDate = datetime.datetime.now(datetime.timezone.utc)
         if immediate:
             try:
-                _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
-                return currValue != dvalue 
+                date, currValue = self.deviceStates[dname][dstate][-1] #last change 
+                currDateToStr = currDate.strftime("%Y-%m-%dT%H:%M:%S")
+                if currValue != dvalue:
+                    if sec_diff(date, currDate, tsunit) <= 1: #direct conflict
+                        print("WARNING: conflict occurs for rule: {0}".format(rulestr))
+                        return False #some conflict behavior is already executed
+                    else:
+                        return True 
             except KeyError: #no state change has happened.
                 return True
         else:
+            if tsunit == 'minutes':
+                offset = datetime.timedelta(seconds = 60)
+            else:
+                offset = datetime.timedelta(seconds = 1 + nextsecond)
+            currDate = currDate - offset 
+            #Smartthings uses UTC as time reference, we subtract an offset that we used to wait for device change to happen
+            # if no violation occur
+            currDateToStr = currDate.strftime("%Y-%m-%dT%H:%M:%S") #convert to string for sec-diff.
+
             if self._checkOneRule(rulestr, currDateToStr):
-                if tsunit == 'minutes':
-                    time.sleep(60)
-                else:
-                    time.sleep(1) 
-                
                 try:
-                    _date, currValue = self.deviceStates[dname][dstate][-1] #last change 
-                    return currValue != dvalue 
+                    date, currValue = self.deviceStates[dname][dstate][-1] #last change 
+                    if currValue != dvalue:
+                        if sec_diff(date, currDate, tsunit) <= 1: #direct conflict
+                            print("WARNING: conflict occurs for rule: {0}".format(rulestr))
+                            return False #some conflict behavior is already executed
+                        else:
+                            return True 
                 except KeyError: #no state change has happened.
                     return True
             

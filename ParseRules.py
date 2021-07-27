@@ -226,8 +226,8 @@ def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None,
         for device, dontStateVal, userRule in userRuleList:
             addOrAppendDepth2(parsedict, device, dontStateVal, userRule)
     
+    gap_dict = None 
     if immediate:
-        gap_dict = None 
         try:
             with open("LearnedModel/treeNoSTLgapDict/gap.pkl", 'rb') as rmodel:
                 gap_dict = pickle.load(rmodel)

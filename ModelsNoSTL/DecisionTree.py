@@ -174,7 +174,7 @@ def evaluate(treemodel, feature_set, gt, encoder, class_label, writefile):
                         outfile.write("\t" + str(cond) + "\n")
 
 if __name__ == '__main__':
-    data_csv = ['../Samsung/benchmark8.csv', '../Samsung/benchmark9.csv', '../Samsung/benchmark10.csv']
+    data_csv = ['../Samsung/benchmark8.csv', '../Samsung/benchmark9.csv', '../Samsung/benchmark10.csv', '../Samsung/benchmark11.csv', '../Samsung/benchmark12.csv', '../Samsung/benchmark13.csv']
 
     parser = argparse.ArgumentParser(description='Train a tree to learn the immediate rules in an IoT environment')
     parser.add_argument('--maxDepth', action = 'store', type=int, dest = 'depth', default = 3,

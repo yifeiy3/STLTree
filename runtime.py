@@ -13,7 +13,7 @@ import glob
 hostName = "192.168.1.107"
 serverPort = 10001
 APIKey = "ff5c476f-1b99-4fc7-a747-0bed31268f11"
-APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/54017165-5332-4a80-8e93-b23dc7d5af78"
+APIEndpt = "https://graph.api.smartthings.com/api/smartapps/installations/3158c036-1dec-4c1e-83cc-e466d59962ad"
 user_defined_rulefile = 'UserDefinedRules/rule.txt'
 
 class MyServer(BaseHTTPRequestHandler):
@@ -55,6 +55,7 @@ class MyServer(BaseHTTPRequestHandler):
             #get the command corresponding to state and value that the device should be.
             stateChgCmd = CAPABILITY_TO_COMMAND_DICT[currentquery[2]][currentquery[3]]
             self.dm.changeDeviceState(deviceid, device, stateChgCmd)
+            print("Changing device state due to DONT rule violation through command: {0}".format(stateChgCmd))
                
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -116,26 +117,26 @@ if __name__ == "__main__":
             raise Exception("Learned class dict not found")
 
     devices = cdict.keys()
-    #gapdict, immediateRules, ruledict = convertRules(
-            #                                 devices, 
-            #                                 error_threshold = args.error_threshold, 
-                                            # cap = args.cap, 
-                                            # user_defined=user_defined_rulefile, 
-                                            # immediate = False
-                                            # stateChangeOnly = args.stateChange
-                                            # timestampunit = args.tsunit
-                                            #)
-    #print(ruledict)
+    gapdict, immediateRules, ruledict = convertRules(
+                                            devices, 
+                                            error_threshold = args.error_threshold, 
+                                            cap = args.cap, 
+                                            user_defined=user_defined_rulefile, 
+                                            immediate = False,
+                                            stateChangeOnly = args.stateChange,
+                                            timestampunit = args.tsunit,
+                                        )
+    print(ruledict)
     #print(ruledict['Virtual Switch 2_switch']['on'][0])
     #for testing purpose
-    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), 
-                                        ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']),
-                                         ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
-                                     [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'])],
-                                     ],
-                              'unlocked': []},
-            'Virtual Switch 2_switch': {'on': [], 'off': []},
-            'Virtual Switch1_switch': {'on': [], 'off': []}}
+    # ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), 
+    #                                     ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']),
+    #                                      ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
+    #                                  [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'])],
+    #                                  ],
+    #                           'unlocked': []},
+    #         'Virtual Switch 2_switch': {'on': [], 'off': []},
+    #         'Virtual Switch1_switch': {'on': [], 'off': []}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")

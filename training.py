@@ -34,8 +34,8 @@ parser.add_argument('--Steps', action='store', type=int, dest='steps', default=2
 args = parser.parse_args()
 
 #our training data
-data_csv = ['Samsung/benchmark1.csv', 'Samsung/benchmark2.csv', 'Samsung/benchmark3.csv']
-validate_csv = ['Samsung/benchmark1.csv']
+data_csv = ['Samsung/benchmark8.csv', 'Samsung/benchmark9.csv', 'Samsung/benchmark10.csv', 'Samsung/benchmark11.csv', 'Samsung/benchmark12.csv', 'Samsung/benchmark13.csv']
+validate_csv = ['Samsung/benchmark8.csv']
 ar = []
 for csv_file in data_csv:
     signal_data = pd.read_csv(csv_file, index_col=None, header=None)

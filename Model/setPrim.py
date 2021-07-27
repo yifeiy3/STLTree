@@ -40,9 +40,10 @@ def primOptimizationInit(signal, primitives, Tmax, Steps):
     for i in range(len(primitives)):
         prim = primitives[i]
         prim_dim = prim.dim 
-        continuous = prim.dimname in signal.classdict.keys() #if it is not, then it is a continuous variable, we use robustness measure
+        continuous = prim.dimname not in signal.classdict.keys() #if it is not a key, then it is a continuous variable, we use robustness measure
+
         if prim.oper == 'G' or prim.oper == 'F':
-            if not checkAllState[prim_dim][0] or False: #too many states, use simulated annealing instead
+            if not checkAllState[prim_dim][0]: #too many states, use simulated annealing instead
                 problem = FLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps, userobustness=continuous)
                 primitives[i], objfunval = primitiveOptimization(problem, signal, continuous)
                 primitives[i].objfunval = objfunval
@@ -54,7 +55,7 @@ def primOptimizationInit(signal, primitives, Tmax, Steps):
                 primitives[i].objfunval = objfunval
                 print("Learned result with parameter: {0}, objective function val: {1}".format(primitives[i].param, primitives[i].objfunval))
         elif prim.oper == 'GF' or prim.oper == 'FG':
-            if not checkAllState[prim_dim][0] or False: #too many states, use simulated annealing instead
+            if not checkAllState[prim_dim][0]: #too many states, use simulated annealing instead
                 problem = SLPrimitiveProblem(prim, timebounds, spacebounds, signal, Tmax, Steps, userobustness=continuous)
                 primitives[i], objfunval = primitiveOptimization(problem, signal, continuous)
                 primitives[i].objfunval = objfunval

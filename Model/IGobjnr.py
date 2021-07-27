@@ -47,7 +47,7 @@ def partitionWeightsNoRobust(robdeg, labels, lblclass, oper):
             p_true_list[i] = max(0.00001, np.sum(Strue_c1)/Strue_c1.size)
     p_true_list[numclass-1] = max(0.00001, 1.0 - sum(p_true_list))
 
-    p_false_list = [0.0001] * numclass
+    p_false_list = [0.00001] * numclass
     for i in range(numclass-1):
         Sfalse_c1 = (labels[Sfalse] == lblclass[i])
         if Sfalse_c1.size > 0: 
