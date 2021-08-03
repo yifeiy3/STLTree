@@ -73,7 +73,7 @@ def sl_FG(p, signal):
     t1, t2 = (signal.time[0], signal.time[1])
     t_intval = t2 - t1
     intv_start = math.floor((tau1 - t1) / t_intval)
-    intv_end = math.floor(max((tau2 + tau3 - t1) // t_intval+1, np.shape(signal.time)[0]))
+    intv_end = math.floor(max((tau2 - t1) // t_intval+1, np.shape(signal.time)[0]))
     window_len = math.floor(tau3 // t_intval) + 1 #size of [0, tau3] window
 
     robustdeg = np.zeros((Nobj, ))
@@ -107,9 +107,9 @@ def computeMaxMinFilt(a, windowlen):
         input: state for our device in a numpy array, 
                our window size
     '''
-    minlst = [0] * (np.shape(a)[0] - windowlen + 1)
-    for i in range(np.shape(a)[0] - windowlen + 1):
-        minlst[i] = min(a[i : i+windowlen-1])
+    minlst = [0] * (np.shape(a)[0] - windowlen)
+    for i in range(np.shape(a)[0] - windowlen):
+        minlst[i] = min(a[i : i+windowlen])
     return max(minlst)
 
 
@@ -118,7 +118,7 @@ def computeMinMaxFilt(a, windowlen):
         input: state for our device in a numpy array, 
                our window size
     '''
-    maxlst = [0] * (np.shape(a)[0] - windowlen + 1)
-    for i in range(np.shape(a)[0] - windowlen + 1):
-        maxlst[i] = max(a[i : i+windowlen-1])
+    maxlst = [0] * (np.shape(a)[0] - windowlen)
+    for i in range(np.shape(a)[0] - windowlen):
+        maxlst[i] = max(a[i : i+windowlen])
     return min(maxlst)

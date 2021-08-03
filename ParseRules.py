@@ -123,6 +123,9 @@ def convertDoRules(parsedDict):
         the dictionary will be, for a device_state ds change to value v
         d[ds][v] = ruledict, where
         ruledict[device][newValue] = set of rules associates with changing s to v that can change our device to newValue
+
+        There could be multiple primitives for the same device_state tuple that has the same value but for different time intervals,
+        for this case, only one rule will be generated for the device_state tuple instead of duplicating.
     '''
     d = {}
 
@@ -137,10 +140,16 @@ def convertDoRules(parsedDict):
             allValueRules = parsedDict[device][newStateValues]
             #a list of rules, each rule is a list of 5 tuple with "and" relation, described in getRule above.
             for individualRule in allValueRules:
+                visited_tup = [] #(device_state, value) tuple that we have already generated a rule for.
+
                 for clause in individualRule:
                     deviceName, _tp, ineq, _ti, possibleStates, _tsunit = clause
                     for eachState in possibleStates:
+                        if (deviceName, eachState) in visited_tup:
+                            #no need for duplicating same rule
+                            continue  
                         ruledict = {}
+                        visited_tup.append((deviceName, eachState))
                         try:
                             ruledict = d[deviceName][eachState]
                             addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
