@@ -117,26 +117,26 @@ if __name__ == "__main__":
             raise Exception("Learned class dict not found")
 
     devices = cdict.keys()
-    gapdict, immediateRules, ruledict = convertRules(
-                                            devices, 
-                                            error_threshold = args.error_threshold, 
-                                            cap = args.cap, 
-                                            user_defined=user_defined_rulefile, 
-                                            immediate = False,
-                                            stateChangeOnly = args.stateChange,
-                                            timestampunit = args.tsunit,
-                                        )
-    print(ruledict)
-    #print(ruledict['Virtual Switch 2_switch']['on'][0])
-    #for testing purpose
-    # ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (7, 4, -1), ['off']), 
-    #                                     ('Virtual Switch1_switch', 'F', '<=', (9, 2, -1), ['on']),
-    #                                      ('Virtual Switch 2_switch', 'F', '<=', (9, 7, -1), ['off'])],
-    #                                  [('Virtual Switch 2_switch', 'G', '>', (6, 4, -1), ['on'])],
-    #                                  ],
-    #                           'unlocked': []},
-    #         'Virtual Switch 2_switch': {'on': [], 'off': []},
-    #         'Virtual Switch1_switch': {'on': [], 'off': []}}
+    # gapdict, immediateRules, ruledict = convertRules(
+    #                                         devices, 
+    #                                         error_threshold = args.error_threshold, 
+    #                                         cap = args.cap, 
+    #                                         user_defined=user_defined_rulefile, 
+    #                                         immediate = False,
+    #                                         stateChangeOnly = args.stateChange,
+    #                                         timestampunit = args.tsunit,
+    #                                     )
+    # print(ruledict)
+    ruledict = {'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'F', '<=', (4, 2, -1), ['off'], 'seconds'), ('Virtual Switch1_switch', 'F', '<=', (6, 4, -1), ['on'], 'seconds'), ('Virtual Switch 2_switch', 'F', '<=', (5, 3, -1), ['off'], 'seconds')],
+                                     [('Virtual Switch 2_switch', 'FG', '>', (6, 4, 1), ['on'], 'seconds')],
+                                     [('Virtual Switch1_switch', 'GF', '>=', (3, 0, 2), ['off'], 'seconds')],
+                                     [('Thermostat_temperature', 'GF', '>=', (3, 1, 1), ['90'], 'seconds')]
+                                     ],
+                        'unlocked': {}},
+            'Virtual Switch 2_switch': {'on': [], 'off': []},
+            'Virtual Switch1_switch': {'on': [], 'off': []}}
+    immediateRules = {'Door_lock': {('locked', 'unlocked'): [[('Virtual Switch1_switch', 'on', 'off', True, False, 'seconds'), ('Virtual Switch 2_switch', 'off', 'on', True, False, 'seconds')]], 
+                ('unlocked', 'locked'): [[('Thermostat_temperature', '80', '85', True, False, 'seconds')]]}}
 
     md = Monitor(APIKey, APIEndpt)
     devices = md.getThings("all")

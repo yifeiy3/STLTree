@@ -721,7 +721,7 @@ class MonitorRules():
                     temprule.pop(valid_idx) #we don't need to check validity of the current action itself, it will be valid as long as offset is satisfied
                     satisfactory, timeWait = self._checkOneDoRule(temprule, currentDate, offset)
                     if satisfactory:
-                        recordedChgs.append((True, newStateValues, timeWait, temprule, tunit))
+                        recordedChgs.append((True, newStateValues, timeWait, rules, tunit))
 
             return recordedChgs
         
@@ -861,10 +861,6 @@ class MonitorRules():
                         rules = ruledict[keytriple][deviceName][keytuple]
                         for rule in rules:
                             rulecopy = copy.copy(rule)
-                            for i in range(len(rulecopy)):
-                                if rulecopy[i][0] == keyname:
-                                    rulecopy.pop(i) #remove the rule corresponding to current device.
-                                    break
 
                             satisfiedrule, tsunit = self._checkOneImmediateRule(rulecopy, currdate)
                             if satisfiedrule:
@@ -1032,7 +1028,7 @@ class MonitorRules():
                 try:
                     date, currValue = self.deviceStates[dname][dstate][-1] #last change 
                     if currValue != dvalue:
-                        if sec_diff(date, currDate, tsunit) <= 1: #direct conflict
+                        if sec_diff(date, currDateToStr, tsunit) <= 1: #direct conflict
                             print("WARNING: conflict occurs for rule: {0}".format(rulestr))
                             return False #some conflict behavior is already executed
                         else:

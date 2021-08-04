@@ -36,7 +36,7 @@ class Scheduler():
             deviceid = self.devicedict[dname][0]
             self.dm.changeDeviceState(deviceid, dname, stateChgCmd)
 
-        print("sending command to change device: {0}, state: {1} to new value command {2} under rule \n {3}".format(deviceid, dstate, stateChgCmd, ruleStr))
+            print("sending command to change device: {0}, state: {1} to new value command {2} under rule \n {3}".format(dname, dstate, stateChgCmd, ruleStr))
 
     def scheduleDoRules(self, antChanges):
         '''
