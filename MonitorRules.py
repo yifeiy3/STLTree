@@ -860,11 +860,9 @@ class MonitorRules():
 
                         rules = ruledict[keytriple][deviceName][keytuple]
                         for rule in rules:
-                            rulecopy = copy.copy(rule)
-
-                            satisfiedrule, tsunit = self._checkOneImmediateRule(rulecopy, currdate)
+                            satisfiedrule, tsunit = self._checkOneImmediateRule(rule, currdate)
                             if satisfiedrule:
-                                recordChgs.append((deviceName, sa, rulecopy, 0, tsunit))
+                                recordChgs.append((deviceName, sa, rule, 0, tsunit))
                                 break
                                 #1 sec be the time offset to execute the do rule since the rule is supposed to be immediate
         return recordChgs
