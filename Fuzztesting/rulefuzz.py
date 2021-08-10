@@ -48,7 +48,7 @@ class ruleGeneration():
                 possibleStates = [values[i] for i in range(value_idx, l)]
             else:
                 value_idx = random.randint(0, l - 2)
-                possibleStates = [values[i] for i in range(0, value_idx)]
+                possibleStates = [values[i] for i in range(0, value_idx+1)]
             return possibleStates
 
         def findSpaceParam(values):
@@ -60,7 +60,6 @@ class ruleGeneration():
             ineq, possibleStates = '', []
             lb, ub = -1, -1
             ineq_seed = random.randint(1, 4)
-            l = len(values)
             if ineq_seed == 1:
                 ineq = '<'
             elif ineq_seed == 2:
@@ -91,20 +90,20 @@ class ruleGeneration():
             oper_seed = random.randint(1, 4)
             ub_seed = random.randint(1, timebound)
             if oper_seed == 1:
-                oper == 'F'
+                oper = 'F'
                 lb_seed = random.randint(0, ub_seed-1)
                 timeparam = (ub_seed, lb_seed, -1)
             elif oper_seed == 2:
-                oper == 'G'
+                oper = 'G'
                 lb_seed = random.randint(0, ub_seed-1)
                 timeparam = (ub_seed, lb_seed, -1)
             elif oper_seed == 3:
-                oper == 'FG'
+                oper = 'FG'
                 lb_seed = random.randint(0, ub_seed-1)
                 dur_seed = random.randint(1, max(1, (ub_seed - lb_seed)//2)) #no point to have very large duration intervals
                 timeparam = (ub_seed, lb_seed, dur_seed)
             else:
-                oper == 'GF'
+                oper = 'GF'
                 lb_seed = random.randint(0, ub_seed - 1)
                 dur_seed = random.randint(1, max(1, (ub_seed - lb_seed)//2)) #no point to have very large duration intervals
                 timeparam = (ub_seed, lb_seed, dur_seed)
@@ -137,7 +136,10 @@ class ruleGeneration():
 
         addOrAppendDepth2(ruledict, device, value, rulestr)
 
-    def generateImmediate(self, ruledict, timebound):
+    def generateImmediate(self, ruledict, gapdict, timebound):
+        '''
+            @param gapdict: a dict used to handle continuous variables
+        '''
         continuous = True 
         while continuous:
             available_devices = [de for de in self.deviceInfo.keys()]
@@ -153,21 +155,26 @@ class ruleGeneration():
 
         depth = random.randint(1, self.maxDepth)
         rulestr = []
+        avail_devices = [de for de in self.deviceInfo.keys() if de != device]
 
         for i in range(depth):
-            rule_device = available_devices[random.randint(0, len(available_devices)-1)]
+            rule_device = avail_devices[random.randint(0, len(avail_devices)-1)]
             rule_values = self.deviceInfo[rule_device]
-            rule_Before = rule_values[random.randint(0, len(available_values) - 1)]
+            rule_Before = rule_values[random.randint(0, len(rule_values) - 1)]
             try:
-                int(valueBefore)
+                int(rule_Before)
             except ValueError: #discrete, we are ok.
-                rule_After = rule_values[random.randint(0, len(available_values) - 1)]
+                rule_After = rule_values[random.randint(0, len(rule_values) - 1)]
             else: #continuous case
-                gap = (rule_values[1] - rule_values[0]) // 5 #at most 5 classes
+                if rule_device in gapdict.keys():
+                    gap = gapdict[rule_device]
+                else:
+                    gap = (int(rule_values[1]) - int(rule_values[0])) // 5 #at most 5 classes
+                    gapdict[rule_device] = gap 
                 before_seed = random.randint(0, 4)
                 after_seed = random.randint(before_seed, 4)
-                rule_Before = str(rule_values[0] + before_seed * gap)
-                rule_After = str(rule_values[0] + after_seed * gap)
+                rule_Before = str(int(rule_values[0]) + before_seed * gap)
+                rule_After = str(int(rule_values[0]) + after_seed * gap)
 
             statechange = rule_Before == rule_After
             falsebranch = True if random.randint(0, 1) == 0 else False 
@@ -184,13 +191,16 @@ class ruleGeneration():
             raise Exception("time bound insufficient, please give a value greater than 3")
         ruledict = {}
         immeruledict = {}
+        gapdict = {}
+
         for i in range(self.count):
             seed = random.random()
             if seed < 0.65:
                 self.generateSTL(ruledict, timebound)
             else:
-                self.generateImmediate(immeruledict, timebound)
-        return ruledict, immeruledict
+                self.generateImmediate(immeruledict, gapdict, timebound)
+
+        return ruledict, immeruledict, gapdict
 
 if __name__ == '__main__':
     device_dict = {
@@ -203,8 +213,10 @@ if __name__ == '__main__':
 
     rf = ruleGeneration(device_dict)
 
-    STLrule, Immerule = rf.generate(timebound)
+    STLrule, Immerule, gapdict = rf.generate(timebound)
     print("STL rule:")
     print(STLrule)
-    print("\n\n\n\n")
+    print("\n\n")
     print(Immerule)
+    print("\n\n")
+    print(gapdict)

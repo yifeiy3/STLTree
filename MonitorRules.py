@@ -251,7 +251,7 @@ class MonitorRules():
         '''
         offsethi, offsetlo, offsetgap, offsetPSTL = offsetInfo
         offsetgap = max(0, offsetgap) #since for first level PSTL we set offsetgap to be -1
-        offsethi, offsetlo = math.inf, offsetlo + offsetgap #add gap for FG rules, for F rules, we can also wait for as long as possible assuming no state changes
+        offsethi, offsetlo = offsethi - offsetgap, offsetlo + offsetgap #add gap for FG rules, for F rules, we can also wait for as long as possible assuming no state changes
 
         hi, lo, gap = interval 
         satisfied = False 
@@ -260,7 +260,9 @@ class MonitorRules():
         if offsetPSTL == 'G' or offsetPSTL == 'GF': 
             offsetlo = offsethi
             offsethi = math.inf
-
+        else:
+            offsethi = math.inf 
+            
         if oper == 'G': 
             satisfied = True 
             first_idx = -1
@@ -553,7 +555,7 @@ class MonitorRules():
                             if res_int_start >= 0:
                                 satisfyingIntvList.append((res_int_start, waitTime-1))
                                 res_int_start = -1
-                            if inthi < validlo:
+                            if inthi < lastvalidlo:
                                 #any waittime after would not be satisfied either since last valid interval already appeared before this
                                 break
                     else: #a satisfactory assignment
@@ -694,31 +696,29 @@ class MonitorRules():
             for newStateValues in stateDict.keys():
                 for rules in stateDict[newStateValues]:
                     #we first iterate through the rules to find the offset interval.
-                    valid_idx = -1 #there could be multiple primitives associated with the same device and state, we just need to check
+                    valid_idx = [] #there could be multiple primitives associated with the same device and state, we just need to check
                                    #the rule that we need to wait the longest, since earlier rules will always be satisfied at that point.
                     tunit = 'seconds'
                     maxoffsetNum = -1 #some arbitrary start value
-
+                    offset = (-1, -1, -1 ,'')
                     for i in range(len(rules)): 
-                        keyname, oper, ineq, intval, stateList, _tsunit = rules[i]
+                        keyname, oper, ineq, intval, stateList, tsunit = rules[i]
                         if keyname == device and not continuous and chgedvalue in stateList: #matching primitive
                             offsetval = computeoffset(intval, oper)
                             if offsetval > maxoffsetNum:
                                 maxoffsetNum = offsetval
-                                valid_idx = i
+                                offset = (intval[0], intval[1], intval[2], oper)
+                            valid_idx.append(i)
                         elif keyname == device and continuous and chgedvalue == (stateList[0] + '_' + ineq): 
                             offsetval = computeoffset(intval, oper)
                             if offsetval > maxoffsetNum:
                                 maxoffsetNum = offsetval
-                                valid_idx = i
+                                offset = (intval[0], intval[1], intval[2], oper)
+                            valid_idx.append(i)
+                        tunit = tsunit #we assume each primitive would have the same timestamp unit to be same.
                     
-                    temprule = copy.copy(rules)
-                    _keyname, oper, _ineq, intval, _stateList, tsunit = temprule[valid_idx] #valid_idx by our construction must >= 0.
-                    #(hi, lo)
-                    offset = (intval[0], intval[1], intval[2], oper)
-                    tunit = tsunit #each rule's time stamp unit must be the same. Since we can only learn minute rules or second rules,
-                                    #not a combination of both.
-                    temprule.pop(valid_idx) #we don't need to check validity of the current action itself, it will be valid as long as offset is satisfied
+                    #we don't need to check validity of the current action itself, it will be valid as long as offset is satisfied
+                    temprule = [rules[i] for i in range(len(rules)) if i not in valid_idx]
                     satisfactory, timeWait = self._checkOneDoRule(temprule, currentDate, offset)
                     if satisfactory:
                         recordedChgs.append((True, newStateValues, timeWait, rules, tunit))
@@ -756,7 +756,14 @@ class MonitorRules():
         try:
             value = int(currValue)
         except ValueError:
-            dicts = [(self.doRules[keyname][currValue], currValue, False)]
+            try:
+                dicts = [(self.doRules[keyname][currValue], currValue, False)]
+            except KeyError:
+                print(self.doRules)
+                print("keyname:{0}".format(keyname))
+                print("currValue:{0}".format(currValue))
+                raise Exception("how")
+
         else:
             for keyvalues in self.doRules[keyname].keys():
                 if checkValidValue(keyvalues, value):
@@ -917,7 +924,7 @@ class MonitorRules():
         if self._checkStateEql(lastChangedEndState, endState, gap):
             dur = sec_diff(lastChangedEndTime, currdate, tsunit)
             if not stateChanged:
-                satisfied = dur > 1 #it stays in the state
+                satisfied = dur >= 1 #it stays in the state
             elif len(currentStates) > 1:
                 _thetime, statebeforelastChg = currentStates[-2]
                 satisfied = dur <= 1 and self._checkStateEql(statebeforelastChg, startState, gap) #immediate change and matches the state change

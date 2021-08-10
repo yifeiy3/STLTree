@@ -129,6 +129,7 @@ def convertDoRules(parsedDict):
     d = {}
 
     #initialize d with mapping to ruledict, note parseDict should have all devices and their corresponding states as keys already
+    #TODO: this may not be true? not true in current rulefuzzing scenario. also may not true for user defined rules. maybe reconsider.
     for device in parsedDict.keys():
         d[device] = {}
         for newStateValues in parsedDict[device].keys():
