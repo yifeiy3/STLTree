@@ -70,7 +70,7 @@ class MonitorRules():
                 st.pop(0)
             st.append((date, value))
 
-    def _checkValid(self, possibleStates, oper, value):
+    def _checkValid(self, possibleStates, ineq, value):
         '''
             check if the current value satisfies the rule. 
             
@@ -83,16 +83,16 @@ class MonitorRules():
             cmpval = int(possibleStates[0])
         except ValueError: #discrete value
             return value in possibleStates
-        if oper == '<':
+        if ineq == '<':
             return intval < cmpval
-        elif oper == '<=':
+        elif ineq == '<=':
             return intval <= cmpval
-        elif oper == '>':
+        elif ineq == '>':
             return intval > cmpval
         else:
             return intval >= cmpval
 
-    def _checkPTSL(self, currdate, oper, interval, possibleStates, currentStates, tsunit):
+    def _checkPTSL(self, currdate, oper, interval, possibleStates, currentStates, tsunit, ineq):
         hi, lo, gap = interval
 
         if oper == 'F':
@@ -100,45 +100,46 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if datediff >= lo and datediff <= hi:
+                if datediff >= lo and datediff < hi:
                     if first_idx < 0:
                         first_idx = i 
-                    if self._checkValid(possibleStates, oper, value):
+                    if self._checkValid(possibleStates, ineq, value):
                         return True 
                 if first_idx < 0 and datediff < lo:
                     first_idx = i
+            if first_idx < 0:
+                first_idx = len(currentStates)
             lastoccur = first_idx - 1
             if lastoccur < 0:
                 return False 
             else:
                 _ld, lastvalue = currentStates[lastoccur]
-                return self._checkValid(possibleStates, oper, lastvalue) 
+                return self._checkValid(possibleStates, ineq, lastvalue) 
 
         elif oper == 'G':
             satisfied = True 
             first_idx = -1 #first occurence of the index greater or equal date range. i.e what the device is like before date range
-            last_idx_outside_range = -2 #last idx happens before hi, used when no state change has happened within the data range
+
             for i in range(len(currentStates)):
                 #Note current states is stored such that the first element is farthest away.
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if datediff >= lo and datediff <= hi:
+                if datediff >= lo and datediff < hi:
                     if first_idx < 0:
-                        first_idx = i 
-                    satisfied = satisfied and self._checkValid(possibleStates, oper, value)
-                if datediff > hi:
-                    last_idx_outside_range = i 
-
-            first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
-
+                        first_idx = i
+                    satisfied = satisfied and self._checkValid(possibleStates, ineq, value)
+                if first_idx < 0 and datediff < lo:
+                    first_idx = i
+            
             if first_idx < 0:
+                first_idx = len(currentStates)
+            lastoccur = first_idx - 1
+
+            if lastoccur < 0:
                 return False #we have no idea what happens within date range
-            elif first_idx == 0:
-                satisfied = self._checkValid(possibleStates, oper, currentStates[first_idx][1]) 
-                satisfied = satisfied and sec_diff(currentStates[first_idx][0], currdate, tsunit) >= hi 
             else:
-                date, value = currentStates[first_idx-1]
-                satisfied = satisfied and self._checkValid(possibleStates, oper, value) #last state change before date range is valid 
+                date, value = currentStates[lastoccur]
+                satisfied = satisfied and self._checkValid(possibleStates, ineq, value) #last state change before date range is valid 
             return satisfied
 
         elif oper == 'FG':
@@ -148,10 +149,10 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if datediff <= hi and datediff >= lo:
+                if datediff < hi and datediff >= lo:
                     if first_idx < 0:
                         first_idx = i
-                    if self._checkValid(possibleStates, oper, value):
+                    if self._checkValid(possibleStates, ineq, value):
                         j = i+1
                         if j >= len(currentStates) and datediff - lo >= gap:
                             return True # no state change has happend since. 
@@ -161,7 +162,7 @@ class MonitorRules():
                             if datediff - t_datediff >= gap:
                                 return True 
                             else:
-                                if not self._checkValid(possibleStates, oper, t_value):
+                                if not self._checkValid(possibleStates, ineq, t_value):
                                     break 
                                 j = j+1
                     elif first_invalid_date < 0: #first invalid state change
@@ -170,10 +171,12 @@ class MonitorRules():
                 if first_idx < 0 and datediff < lo:
                     first_idx = i
 
-            if first_idx - 1 > 0:
+            if first_idx < 0:
+                first_idx = len(currentStates)
+            if first_idx - 1 >= 0:
                 _ld, lastvalue = currentStates[first_idx - 1]
                 longenough = first_invalid_date < 0 or hi - first_invalid_date >= gap #we are valid for at least gap seconds.
-                return self._checkValid(possibleStates, oper, lastvalue) and longenough 
+                return self._checkValid(possibleStates, ineq, lastvalue) and longenough 
                 
             return False #no F has happend
 
@@ -192,7 +195,7 @@ class MonitorRules():
                 datediff = sec_diff(date, currdate, tsunit)
                 if datediff < currintvallo: #too recent for our current interval, we can check next state change
                     #last_satisfied_time cant be < currintvallo already since this is the first time we see a more recent state change.
-                    if last_notsatisfied_time >= currintvalhi and last_notsatisfied_time < last_satisfied_time:
+                    if last_notsatisfied_time >= currintvalhi and last_notsatisfied_time <= last_satisfied_time:
                         #last change is in a not satisfied state for the entire interval, GF rule not satisfied for the interval
                         return False
                     else:
@@ -200,24 +203,24 @@ class MonitorRules():
                 else:
                     #we continue to update our state changes for the interval, we need last_satisfied_time > last_notsatisfied_time to show
                     #we are currently in not satisfied state and want to change to a satisfied state.
-                    if self._checkValid(possibleStates, oper, value) and last_satisfied_time >= last_notsatisfied_time:
+                    if self._checkValid(possibleStates, ineq, value) and last_satisfied_time >= last_notsatisfied_time:
                         last_satisfied_time = datediff
-                    elif not self._checkValid(possibleStates, oper, value) and last_notsatisfied_time >= last_satisfied_time:
+                    elif not self._checkValid(possibleStates, ineq, value) and last_notsatisfied_time >= last_satisfied_time:
                         last_notsatisfied_time = datediff 
                     currentStateidx = currentStateidx + 1
 
             while currentintvalidx < len(possibleIntervals):
                 #all the state changes did not cover all the intervals, we check rest of the interval if they are satisfied
                 currintvallo, currintvalhi = possibleIntervals[currentintvalidx]
-                if not(last_satisfied_time >= currintvallo and last_satisfied_time <= currintvalhi):
-                    #no satisfying state change within the interval
+                if not(last_notsatisfied_time >= currintvallo and last_notsatisfied_time < currintvalhi):
+                    #no nonsatisfying state change within the interval
                     return last_satisfied_time < last_notsatisfied_time #last change is a satisfactory change, valid.
                 currentintvalidx += 1
             return True #we have checked all the intervals and found no violations
 
     def _checkOneRule(self, rule, currdate):
         satisfied = True 
-        for keyname, oper, _ineq, intval, stateList, tsunit in rule: 
+        for keyname, oper, ineq, intval, stateList, tsunit in rule: 
             parseName = keyname.rsplit('_', 1)
             dname, dstate = parseName[0], parseName[1]
             if dname not in self.deviceStates:
@@ -225,27 +228,29 @@ class MonitorRules():
             statedict = self.deviceStates[dname]
             if dstate not in statedict:
                 return False #we don't know the device state, so we can't infer anything
-            satisfied = satisfied and self._checkPTSL(currdate, oper, intval, stateList, statedict[dstate], tsunit)
+            satisfied = satisfied and self._checkPTSL(currdate, oper, intval, stateList, statedict[dstate], tsunit, ineq)
         return satisfied
 
     def _checkRules(self, currChg):
         currdate, currdevice, currState, currValue = currChg
         keyname = "{0}_{1}".format(currdevice, currState)
         if keyname not in self.rules:
-            return True, currValue #no rules about this device, we can just continue, this should also skip all continuous variable devices
+            return True, currValue, [] #no rules about this device, we can just continue, this should also skip all continuous variable devices
         ruledict = self.rules[keyname]
         keys = [key for key in ruledict.keys() if key != currValue]
         #we only need to worry about the rules that does not match curr value being satisfied
         resvalue = currValue
         satisfied = True
+        checkedrule = []
         for key in keys:
             for rules in ruledict[key]:
                 if self._checkOneRule(rules, currdate):
                     satisfied = False
                     resvalue = key #the device should be in this state instead 
-        return satisfied, resvalue
+                    checkedrule = rules
+        return satisfied, resvalue, checkedrule
 
-    def _checkPTSLonDO(self, currdate, oper, interval, possibleStates, currentStates, offsetInfo, tsunit):
+    def _checkPTSLonDO(self, currdate, oper, interval, possibleStates, currentStates, offsetInfo, tsunit, ineq):
         '''
             @return a tuple: (Rule satisfied?, Possible starting intervals for rule to be satisfied)
         '''
@@ -266,7 +271,6 @@ class MonitorRules():
         if oper == 'G': 
             satisfied = True 
             first_idx = -1
-            last_idx_outside_range = -2
             modifiedintvalhi, modifiedintvallo = (max(0, hi - offsetlo), max(0, lo - offsethi))
 
             intvStart = -1
@@ -275,43 +279,43 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if datediff >= modifiedintvallo and datediff <= modifiedintvalhi:
+                if datediff >= modifiedintvallo and datediff < modifiedintvalhi:
                     if first_idx < 0:
                         first_idx = i 
-                    if intvStart < 0 and self._checkValid(possibleStates, oper, value):
+                    if intvStart < 0 and self._checkValid(possibleStates, ineq, value):
                         #have to wait hi amount of seconds for G.
                         intvStart = max(offsetlo, hi - datediff)
                         startDate = datediff 
-                    elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
+                    elif intvStart >= 0 and not self._checkValid(possibleStates, ineq, value):
                         satisfyingIntvList.append((intvStart, intvStart + (startDate - datediff) - 1))
                         intvStart = -1
                         startDate = -1
-                if datediff > modifiedintvalhi:
-                    last_idx_outside_range = i 
+                if first_idx < 0 and datediff < modifiedintvallo:
+                    first_idx = i 
 
-            first_idx = last_idx_outside_range + 1 if first_idx < 0 else first_idx
+            if first_idx < 0:
+                first_idx = len(currentStates)
 
-            if intvStart >= 0 and intvStart + (hi - lo + 1) <= offsethi: #everything after will be satisfied, append this
-                satisfied = True
+            lastoccur = first_idx - 1
+
+            if intvStart >= 0:
                 satisfyingIntvList.append((intvStart, offsethi)) #check behavior before the first interval
 
             firstStart, firstEnd = -1, -1
             if satisfyingIntvList:
                 firstStart, firstEnd = satisfyingIntvList[0]
 
-            if first_idx < 0:
+            if lastoccur < 0:
                 return False, [] 
-            elif first_idx == 0: #nothing happened before the interval
-                print("first index = 0, nothing to be done here")
-            elif first_idx == len(currentStates): #nothing happened within the interval
-                satisfyingIntvList = [(offsetlo, offsethi)]
+            elif first_idx == len(currentStates): #no state change within interval
+                date, value = currentStates[lastoccur]
+                if self._checkValid(possibleStates, ineq, value): 
+                    satisfyingIntvList.append((offsetlo, offsethi))
             else:
-                date, value = currentStates[first_idx - 1]
+                date, value = currentStates[lastoccur]
                 nextdate, _nextvalue = currentStates[first_idx]
-                if sec_diff(nextdate, currdate, tsunit) < modifiedintvallo: #nothing happened within the interval
-                    return satisfied, [(offsetlo, offsethi)]
-                    
-                if self._checkValid(possibleStates, oper, value):                
+
+                if self._checkValid(possibleStates, ineq, value):                
                     if nextdate == firstStart: #then any time before our first interval also works, extend our interval.
                         satisfyingIntvList.pop(0)
                         satisfyingIntvList.insert(0, (offsetlo, firstEnd))
@@ -337,15 +341,15 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 realdate, realvalue = currentStates[i]
                 date, value = sec_diff(realdate, currdate, tsunit), realvalue
-                if date <= modifiedintvalhi and date >= modifiedintvallo:
+                if date < modifiedintvalhi and date >= modifiedintvallo:
                     if first_idx < 0:
                         first_idx = i
-                    if intvStart < 0 and self._checkValid(possibleStates, oper, value):
+                    if intvStart < 0 and self._checkValid(possibleStates, ineq, value):
                         #we have to wait at least lo - date seconds to satisfy rule
                         intvStart = lo - date
                         startDate = date
                         satisfied = True 
-                    elif intvStart >= 0 and not self._checkValid(possibleStates, oper, value):
+                    elif intvStart >= 0 and not self._checkValid(possibleStates, ineq, value):
                         #we need to stop once the non-satisfying state would last the entire interval.
                         #intvStart + (startDate- date) makes the currchange to be at lo, add (hi -lo) to make it at hi, -1 to make inclusive
                         endpoint = min(intvStart + (startDate - date) + (hi - lo), offsethi)
@@ -360,18 +364,24 @@ class MonitorRules():
                         return False, []
                     else: #we need the last state change to be in a valid state.
                         _lastdate, lastvalue = currentStates[i-1]
-                        if self._checkValid(possibleStates, oper, lastvalue):
+                        if self._checkValid(possibleStates, ineq, lastvalue):
                             print("Returned from F rule with satisfied: {0}, result list: {1}".format(True, [(offsetlo, offsethi)]))
                             return True, [(offsetlo, offsethi)]
                         else: 
                             return False, []
-            
             if first_idx < 0:
+                first_idx = len(currentStates)
+
+            if first_idx <= 0:
                 return False, []
-            elif first_idx > 0:
+            elif first_idx == len(currentStates):
+                _ld, lv = currentStates[first_idx - 1]
+                if self._checkValid(possibleStates, ineq, lv):
+                    satisfyingIntvList.append((offsetlo, offsethi))
+            else:
                 firstdate, _firstvalue = currentStates[first_idx] #dont care about value being valid or not, since we will merge overlap
                 _ld, lv = currentStates[first_idx - 1]
-                if self._checkValid(possibleStates, oper, lv):
+                if self._checkValid(possibleStates, ineq, lv):
                     firstStart = hi - sec_diff(firstdate, currdate, tsunit)
                     satisfyingIntvList.append((offsetlo, firstStart))
 
@@ -406,10 +416,10 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if datediff <= modifiedintvalhi and datediff >= modifiedintvallo:
+                if datediff < modifiedintvalhi and datediff >= modifiedintvallo:
                     if first_idx < 0:
                         first_idx = i 
-                    if intvStart < 0 and self._checkValid(possibleStates, oper, value):
+                    if intvStart < 0 and self._checkValid(possibleStates, ineq, value):
                         j = i+1
                         if j >= len(currentStates): #our device is currently in a valid state
                             satisfied = True 
@@ -424,10 +434,10 @@ class MonitorRules():
                                     intvStart = lo - datediff + gap
                                     startDate = datediff
                                     break
-                                elif not self._checkValid(possibleStates, oper, t_value):
+                                elif not self._checkValid(possibleStates, ineq, t_value):
                                     break #valid state not lasting long enough, break.
                                 j = j+1
-                    elif not self._checkValid(possibleStates, oper, value):
+                    elif not self._checkValid(possibleStates, ineq, value):
                         #similar to how it is done in F, with addition of gap
                         if intvStart >= 0: 
                             endpoint = min(intvStart + (startDate - datediff) + (hi - lo), offsethi)
@@ -442,22 +452,25 @@ class MonitorRules():
                         return False, []
                     else: #we just need the last state change to be in a valid state.
                         _lastdate, lastvalue = currentStates[i-1]
-                        if self._checkValid(possibleStates, oper, lastvalue):
+                        if self._checkValid(possibleStates, ineq, lastvalue):
                             print("Returned from FG rule with satisfied: {0}, result list: {1}".format(True, [(offsetlo, offsethi)]))
                             return True, [(offsetlo, offsethi)]
                         else:
                             return False, []
-
             if first_idx < 0:
+                first_idx = len(currentStates)
+            if first_idx <= 0:
                 return False, []
-            elif first_idx > 0:
-                firstdate, _firstvalue = currentStates[first_idx] #dont care about value being valid or not, since we will merge overlap
+            else:
                 _ld, lv = currentStates[first_idx - 1]
                 longenough = first_invalid_date < 0 or hi - first_invalid_date - offsetlo >= gap #we are valid for at least gap seconds after waiting offsetlo
-                if self._checkValid(possibleStates, oper, lv) and longenough:
-                    firstStart = lo - sec_diff(firstdate, currdate, tsunit) + gap
-                    firstendpt = firstStart + hi - lo  #there will be at least a valid state lasting gap time stamps since start if we wait this long
-                    satisfyingIntvList.append((offsetlo,firstendpt)) 
+                if self._checkValid(possibleStates, ineq, lv) and longenough:
+                    if first_invalid_date < 0:
+                        satisfyingIntvList.append((offsetlo, offsethi))
+                    else:
+                        firstStart = lo - first_invalid_date + gap
+                        firstendpt = firstStart + hi - lo  #there will be at least a valid state lasting gap time stamps since start if we wait this long
+                        satisfyingIntvList.append((offsetlo,firstendpt)) 
 
             if intvStart >= 0:
                 satisfyingIntvList.append((intvStart, offsethi))
@@ -486,9 +499,9 @@ class MonitorRules():
             for i in range(len(currentStates)):
                 date, value = currentStates[i]
                 datediff = sec_diff(date, currdate, tsunit)
-                if validStart < 0 and self._checkValid(possibleStates, oper, value):
+                if validStart < 0 and self._checkValid(possibleStates, ineq, value):
                     validStart = datediff + gap #it will be of the valid state within the gap window.
-                elif validStart >= 0 and not self._checkValid(possibleStates, oper, value):
+                elif validStart >= 0 and not self._checkValid(possibleStates, ineq, value):
                     endpoint = datediff
                     validtimes.append((validStart, max(0, endpoint - gap)))
                     validStart = -1
@@ -636,7 +649,7 @@ class MonitorRules():
         satisfied = True
         waitTimeIntvals = [] 
         print("checking rule: {0}".format(rule))
-        for keyname, oper, _ineq, intval, stateList, tsunit in rule: 
+        for keyname, oper, ineq, intval, stateList, tsunit in rule: 
             parseName = keyname.rsplit('_', 1)
             dname, dstate = parseName[0], parseName[1]
             if dname not in self.deviceStates:
@@ -644,7 +657,7 @@ class MonitorRules():
             statedict = self.deviceStates[dname]
             if dstate not in statedict:
                 return False, -1 #we don't know the device state, so we can't infer anything
-            ruleSatisfied, satisfyingIntval = self._checkPTSLonDO(currdate, oper, intval, stateList, statedict[dstate], offsetInfo, tsunit)
+            ruleSatisfied, satisfyingIntval = self._checkPTSLonDO(currdate, oper, intval, stateList, statedict[dstate], offsetInfo, tsunit, ineq)
             satisfied = satisfied and ruleSatisfied
             waitTimeIntvals.append(satisfyingIntval)
 
@@ -759,10 +772,7 @@ class MonitorRules():
             try:
                 dicts = [(self.doRules[keyname][currValue], currValue, False)]
             except KeyError:
-                print(self.doRules)
-                print("keyname:{0}".format(keyname))
-                print("currValue:{0}".format(currValue))
-                raise Exception("how")
+                return anticipatedChgs #no rules about this device_state's value, we continue.
 
         else:
             for keyvalues in self.doRules[keyname].keys():
@@ -800,24 +810,28 @@ class MonitorRules():
             Note: for stateChgs, the states should be inserted in time order for each device
 
             If both an immediate rule and PSTL rule are violated, we prioritize immediate rule first.
+
+            @return: (is Dont rule violated?, Should be state, the rule being violated, anticipated Changes for Do rules)
         '''
         currdate, currdevice, currState, currValue = currChg
         for date, device, state, value in stateChgs:
             #date_t = sec_diff(date, currdate)
             self.updateState(date, device, state, value)
 
-        boolresult, shouldstate = self._checkRules(currChg)
+        boolresult, shouldstate, respectiveRule = self._checkRules(currChg)
 
         if self.immediateRules:
-            immediateBoolResult, immediateShouldState = self.checkImmediateViolationDONT(currChg)
+            immediateBoolResult, immediateShouldState, immediateRespectiveRule = self.checkImmediateViolationDONT(currChg)
 
         if not immediateBoolResult:  #immediate rule is violated
             if not boolresult: #two conflicting rules, priotize immediate rule
                 shouldstate = immediateShouldState
+                respectiveRule = immediateRespectiveRule
             else:
                 boolresult = immediateBoolResult
                 shouldstate = immediateShouldState
-        
+                respectiveRule = immediateRespectiveRule
+
         anticipatedChgs = {}
 
         if boolresult: #we should only mark the change as valid and consider DO rules if the change does not violate DONT rule already.
@@ -826,7 +840,7 @@ class MonitorRules():
                 anticipatedChgs = self._checkDoRules(currChg, self.doRules)
                 self._checkImmediateDoRules(anticipatedChgs, currChg) #add in the immediate rules in anticipated changes
 
-        return boolresult, shouldstate, anticipatedChgs
+        return boolresult, shouldstate, respectiveRule, anticipatedChgs
     
     def _checkImmediateDoRuleOnce(self, currChg, ruledict, lastDeviceState):
         '''
@@ -946,11 +960,11 @@ class MonitorRules():
             dname, dstate = device_state_tuple.rsplit('_', 1)
 
             if dname not in self.deviceStates.keys():
-                return False #we have not encountered this continuous variable yet, dont know whats going on.
+                return False, '' #we have not encountered this continuous variable yet, dont know whats going on.
 
             statedict = self.deviceStates[dname]
             if dstate not in statedict.keys():
-                return False #we don't know device state
+                return False, '' #we don't know device state
         
             satisfied = satisfied and self._checkImmediate(currdate, sState, eState, sChanged, negate, statedict[dstate], gap, tsunit)
         return satisfied, tsunit
@@ -965,10 +979,10 @@ class MonitorRules():
         try:
             lastDeviceState = self.deviceStates[currdevice][currState][-1] #date, value tuple
         except KeyError:
-            return True, currValue #no info about past states of devices
+            return True, currValue, [] #no info about past states of devices
         
         if keyname not in self.immediateRules:
-            return True, currValue #no rules
+            return True, currValue, [] #no rules
 
         ruledict = self.immediateRules[keyname]
 
@@ -982,6 +996,7 @@ class MonitorRules():
 
         resvalue = currValue
         satisfied = True 
+        respectiveRule = []
 
         for key in keys: 
             for rules in ruledict[key]:
@@ -989,8 +1004,9 @@ class MonitorRules():
                 if satisfiedrule:
                     satisfied = False 
                     resvalue = key[1] #should be in this endState instead
+                    respectiveRule = rules
         
-        return satisfied, resvalue
+        return satisfied, resvalue, respectiveRule
         
     def checkCommand(self, dname, dstate, dvalue, rulestr, immediate, tsunit, nextsecond):
         '''

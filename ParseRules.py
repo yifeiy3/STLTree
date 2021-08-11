@@ -128,13 +128,6 @@ def convertDoRules(parsedDict):
     '''
     d = {}
 
-    #initialize d with mapping to ruledict, note parseDict should have all devices and their corresponding states as keys already
-    #TODO: this may not be true? not true in current rulefuzzing scenario. also may not true for user defined rules. maybe reconsider.
-    for device in parsedDict.keys():
-        d[device] = {}
-        for newStateValues in parsedDict[device].keys():
-            d[device][newStateValues] = {}
-    
     for device in parsedDict.keys():
         for newStateValues in parsedDict[device].keys():
             allValueRules = parsedDict[device][newStateValues]
@@ -150,20 +143,26 @@ def convertDoRules(parsedDict):
                             continue  
                         ruledict = {}
                         visited_tup.append((deviceName, eachState))
+                        newStateKey = ''
                         try:
-                            ruledict = d[deviceName][eachState]
-                            addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
-                        except KeyError:
-                            #we have a continuous variable
-                            if deviceName not in d.keys():
-                                d[deviceName] = {}
-                            newstateKey = eachState + '_' + ineq
-                            d[deviceName][newstateKey] = {}
-                            ruledict = d[deviceName][newstateKey]
+                            int(eachState)
+                        except ValueError:
+                            newStateKey = eachState
+                        else:
+                            #continuous variable
+                            newStateKey = eachState + '_' + ineq
 
-                            newkey = newStateValues #add in inequality for rules
-                            addOrAppendDepth2(ruledict, device, newkey, individualRule)
-    
+                        if deviceName in d.keys():
+                            if newStateKey in d.keys():
+                                ruledict = d[deviceName][newStateKey]
+                            else:
+                                d[deviceName][newStateKey] = ruledict
+                        else:
+                            d[deviceName] = {}
+                            d[deviceName][newStateKey] = ruledict
+
+                        addOrAppendDepth2(ruledict, device, newStateValues, individualRule)
+
     return d 
 
 def convertRules(devices, error_threshold = 0.05, cap = 10, user_defined = None, immediate = True, stateChangeOnly = False,

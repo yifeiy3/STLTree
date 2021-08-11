@@ -45,7 +45,7 @@ class MyServer(BaseHTTPRequestHandler):
                     for res in laststates:
                         stateChgs.append((res['date'], devices, res['state'], res['value']))
 
-        valid, should, antChgs = self.rm.checkViolation(currentquery, stateChgs=stateChgs)
+        valid, should, _resrule, antChgs = self.rm.checkViolation(currentquery, stateChgs=stateChgs)
         print("{0}, {1}".format(valid, should))
 
         #handling DONT rules
