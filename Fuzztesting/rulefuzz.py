@@ -176,7 +176,7 @@ class ruleGeneration():
                 rule_Before = str(int(rule_values[0]) + before_seed * gap)
                 rule_After = str(int(rule_values[0]) + after_seed * gap)
 
-            statechange = rule_Before == rule_After
+            statechange = rule_Before != rule_After
             falsebranch = True if random.randint(0, 1) == 0 else False 
             
             rulestr.append((rule_device, rule_Before, rule_After, statechange, falsebranch, 'seconds'))

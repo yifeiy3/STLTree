@@ -24,8 +24,8 @@ class logGeneration():
         self.devicedict = devicedict
         self.STLDont = STLDontdict
         self.immeDont = immeDontdict
-        self.STLDo = STLDodict 
-        self.immeDo = immeDoDict
+        self.STLDo = STLDodict if STLDodict else {}
+        self.immeDo = immeDoDict if immeDoDict else {}
         self.gapdict = gapdict
         self.timebound = timebound 
 
@@ -325,7 +325,7 @@ class logGeneration():
 
         currbefore_timestamp = random.randint(1, self.timebound)
         currbefore_datestr = find_timediff(startDate, currbefore_timestamp, ts)
-        Events.append((currbefore_datestr, specifiedname, specifiedstate, getValidState(device, beforeValue)))
+        Events.append((currbefore_datestr, specifiedname, specifiedstate, getValidState(device, [beforeValue])))
 
         if not violation: #make it satisfied if no random events has tampered with our setup
             currChg = (startDate_str, specifiedname, specifiedstate, afterValue)

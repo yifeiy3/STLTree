@@ -87,7 +87,7 @@ def convertImmediateDoRules(parsedDict):
         for device_state to change from keyBefore to keyAfter.
     '''
     if not parsedDict:
-        return None 
+        return None
 
     d = {}
 

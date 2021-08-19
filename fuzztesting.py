@@ -40,6 +40,13 @@ def DoRuleDictToString(ruledict):
                         s+= '\n\t\t\t\t\t{0}'.format(rules)
     return s 
 
+def getDeviceName(devicedict):
+    res = []
+    for devices in devicedict.keys():
+        dname, _dstate = devices.rsplit('_', -1)
+        res.append(dname)
+    return res 
+
 #dictionary mapping device_state tuple to their available states. In the case for continuous variables,
 #the list will be length 2, with lowerbound, upperbound.
 device_dict = {
@@ -73,7 +80,7 @@ amountPerRule = 2 #how many logs we generate per rule for log fuzzing
 DontRuleLogs = lf.generateDontLog(amountPerRule)
 DoRuleLogs = lf.generateDoLog(amountPerRule)
 
-monitor = MonitorRules(STLrule, immerule, None, device_dict.keys(), 5, True)
+monitor = MonitorRules(STLrule, immerule, None, getDeviceName(device_dict), 5, True)
 
 DontOutput = 'Fuzztesting/dontrule.txt'
 DoOutput = 'Fuzztesting/do.txt'
@@ -104,6 +111,7 @@ with open(DontOutput, 'w') as dontfile:
         dontfile.write("\tGenerated under ruleStr: {0}\n\n".format(rs))
 
         dontfile.write("Monitor Output: Valid: {0}, ShouldState: {1}, \n Under Rule: {2} \n {3}\n\n".format(valid, shouldState, respectiveRule, elapsed))
+        monitor.clearStates()
 
 with open(DoOutput, 'w') as dofile:
     dofile.write('Device dict: {0} \n\n'.format(device_dict))
@@ -125,3 +133,4 @@ with open(DoOutput, 'w') as dofile:
         dofile.write("\tGenerated under ruleStr: {0}\n\n".format(rs))
 
         dofile.write("Monitor Output: Valid: {0}, ShouldState: {1}, \n Under Rule: {2} \n Chg:{3}\n {4}\n\n".format(valid, shouldState, resrule, chg, elapsed))
+        monitor.clearStates()
