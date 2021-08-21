@@ -239,7 +239,7 @@ class logGeneration():
             except TypeError:
                 print(possibleStates)
                 print(pickState)
-                raise Exception("weeeee")
+                raise Exception("this should not happen")
             else:
                 gap = self.gapdict[device]
                 return str(random.randint(intval, intval+gap-1))

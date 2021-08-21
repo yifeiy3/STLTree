@@ -211,12 +211,12 @@ if __name__ == '__main__':
     }
     timebound = 10
 
-    rf = ruleGeneration(device_dict)
+    rf = ruleGeneration(device_dict, count=5)
 
     STLrule, Immerule, gapdict = rf.generate(timebound)
-    print("STL rule:")
+    print("Temporal rule:")
     print(STLrule)
-    print("\n\n")
+    print("\nImmediate rule:")
     print(Immerule)
-    print("\n\n")
+    print("\nGap dict:")
     print(gapdict)
