@@ -127,7 +127,7 @@ class ConflictVerification():
                             durConstraint = True
                             for k in range(0, dur+1):
                                 durConstraint = And(durConstraint, createSTLConstraint(keyname, j+k, ineq, states))
-                            stateConstraint = Or(stateConstraint, newConstraint)
+                            stateConstraint = Or(stateConstraint, durConstraint)
                         primConstraint = Or(primConstraint, stateConstraint)
                     constraint = And(constraint, primConstraint) 
 
@@ -139,7 +139,7 @@ class ConflictVerification():
                             durConstraint = False
                             for k in range(0, dur+1):
                                 durConstraint = Or(durConstraint, createSTLConstraint(keyname, j+k, ineq, states))
-                            stateConstraint = Or(stateConstraint, newConstraint)
+                            stateConstraint = Or(stateConstraint, durConstraint)
                         primConstraint = And(primConstraint, stateConstraint)
                     constraint = And(constraint, primConstraint)           
         
@@ -258,7 +258,7 @@ class ConflictVerification():
                     vRules.append(self.immeRule[device][(start, values)])
 
                 for elements in itertools.product(*vRules):
-                    result.append((start, valuesToPick, ruleConflict, elements))
+                    result.append((STLpickedvalues, start, valuesToPick, ruleConflict, elements))
             return result
 
         ruledict = {} #a dictionary mapping device_state to (STLrule, immerules) to check for conflict
@@ -277,14 +277,15 @@ class ConflictVerification():
                 temprule.append([]) #add in an empty list for the case none of the rule for that value is picked for conflict analysis
                 valuedict[devices][index] = values
                 index += 1
-            valueRules.append(temprule)
-        
+                valueRules.append(temprule)
+
             allpossible = itertools.product(*valueRules)
 
             reslist = []
             for elements in allpossible:
                 notpicked = []
                 picked = []
+
                 for i in range(index):
                     if elements[i] == []:
                         notpicked.append(i) #record all the not picked values for STL rules, we can interlace with immediate rules
@@ -295,8 +296,9 @@ class ConflictVerification():
                 pickedvalues = [valuedict[devices][idxs] for idxs in picked]
 
                 STLRule = delete_multiple_element(list(elements), notpicked)  #delete all the not picked entry
+
                 if len(picked) > 1: #at least 2 temporal rule is picked, we can check for conflict
-                    reslist.append(pickedvalues, '', [], STLRule, [])
+                    reslist.append((pickedvalues, '', [], STLRule, []))
 
                 #we can pick any element of the powerset for notpickedvalues to test for conflict
                 if len(notpicked) == index: #no STL rules, just immediate rules only
@@ -305,7 +307,7 @@ class ConflictVerification():
                     possibleCombinationNotPicked = powerset(notpickedvalues, 1)
 
                 for notpickedcombinations in possibleCombinationNotPicked:
-                    reslist += generateImmediate(devices, notpickedcombinations, elements, pickedvalues)
+                    reslist += generateImmediate(devices, notpickedcombinations, STLRule, pickedvalues)
             
             ruledict[devices] = reslist 
         
@@ -331,17 +333,18 @@ class ConflictVerification():
                     checkResult, log = self.checkConflict(STLrules, Immerules)
                     count = 1
                     if checkResult: #a conflict happened
+                        out.write("{0} \n\t".format(count))
                         for i in range(len(STLrules)):
                             assovalue = pickedSTLval[i]
                             rule = STLrules[i]
-                            out.write("{0}.Value:{1} \n\tRule:{2}\n\t".format(count, assovalue, rule))
+                            out.write("Value:{0} \n\tRule:{1}\n\t".format(assovalue, rule))
 
                         for i in range(len(Immerules)):
                             assovalue = valuesToPick[i]
                             rule = Immerules[i]
-                            out.write("{0}.BeforeValue:{1}, AfterValue:{2} \n\tRule:{3}\n\t".format(count, beforeState, assovalue, rule))
+                            out.write("BeforeValue:{0}, AfterValue:{1} \n\tRule:{2}\n\t".format(beforeState, assovalue, rule))
 
-                        out.write("With example violation log: \n\t\t{3}\n\n".format(LogToString(log)))
+                        out.write("With example violation log: \n\t\t{0}\n\n".format(LogToString(log)))
                         count += 1
 
 
@@ -352,8 +355,15 @@ if __name__ == '__main__':
         'Virtual Switch1_switch': ['on', 'off'],
         'Thermostat_temperature': ['75', '95'],
     }
-    STLruleInput = {}
-    ImmeruleInput = {}
+    STLruleInput = {'Virtual Switch1_switch': {'on': 
+        [[('Thermostat_temperature', 'F', '<', (2, 1, -1), ['80'], 'seconds'), ('Door_lock', 'G', '>', (7, 1, -1), ['unlocked'], 'seconds')]], 
+        'off': [[('Thermostat_temperature', 'G', '>', (4, 3, -1), ['89'], 'seconds'), ('Virtual Switch 2_switch', 'F', '>', (1, 0, -1), ['off'], 'seconds'), ('Thermostat_temperature', 'FG', '<=', (5, 2, 1), ['90'], 'seconds'), ('Thermostat_temperature', 'G', '>=', (10, 1, -1), ['86'], 'seconds')]]}, 
+        'Door_lock': {'unlocked': [[('Thermostat_temperature', 'GF', '>=', (8, 7, 1), ['81'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>', (1, 0, 1), ['off'], 'seconds'), ('Virtual Switch1_switch', 'G', '>', (4, 1, -1), ['off'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '<=', (4, 0, 1), ['on'], 'seconds')], [('Virtual Switch1_switch', 'FG', '<=', (1, 0, 1), ['on'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '>=', (10, 8, 1), ['off'], 'seconds')]]}, 
+        'Virtual Switch 2_switch': {'off': [[('Door_lock', 'GF', '>=', (4, 3, 1), ['unlocked'], 'seconds'), ('Virtual Switch1_switch', 'GF', '<', (2, 0, 1), ['on'], 'seconds'), ('Thermostat_temperature', 'FG', '>=', (1, 0, 1), ['87'], 'seconds')], [('Thermostat_temperature', 'FG', '<', (7, 5, 1), ['83'], 'seconds'), ('Thermostat_temperature', 'F', '>', (5, 0, -1), ['82'], 'seconds'), ('Thermostat_temperature', 'GF', '>', (3, 2, 1), ['81'], 'seconds')]]}} 
+    ImmeruleInput = {'Virtual Switch1_switch': {('off', 'on'): [[('Door_lock', 'unlocked', 'unlocked', True, True, 'seconds'), ('Virtual Switch 2_switch', 'off', 'off', True, False, 'seconds'), ('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds')], 
+    [('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds'), ('Thermostat_temperature', '91', '91', True, True, 'seconds'), ('Virtual Switch 2_switch', 'on', 'on', True, True, 'seconds'), ('Thermostat_temperature', '83', '91', False, False, 'seconds')], ]}, 
+    'Door_lock': {('locked', 'unlocked'): [[('Thermostat_temperature', '83', '91', False, True, 'seconds'), ('Virtual Switch1_switch', 'off', 'off', True, True, 'seconds')]]}} 
+    
     gapdict = {'Thermostat_temperature': 4}
     cv = ConflictVerification(deviceInput, STLruleInput, ImmeruleInput, gapdict, 10)
 
@@ -366,6 +376,4 @@ if __name__ == '__main__':
         ('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds')], 
     ]
 
-    print(cv.checkConflict(STLrules, immerule))
-    print('\n\n')
-    print(cv.valueMap)
+    cv.conflictAnalysis('analysisResult.txt')
