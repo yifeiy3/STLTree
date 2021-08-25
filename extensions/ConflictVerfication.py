@@ -1,4 +1,11 @@
 from z3 import *
+import itertools
+
+def LogToString(events):
+    s = ''
+    for items in events:
+        s += '{0},\n\t\t'.format(items)
+    return s 
 
 class ConflictVerification():
     '''
@@ -42,7 +49,7 @@ class ConflictVerification():
                 valuemap[devices] = d
         return valuemap
 
-    def checkDontConflict(self, tempRules, immeRules):
+    def checkConflict(self, tempRules, immeRules):
         '''
             @param: a list of temporal/immediate rules we want to check for conflicts, that is, if it is possible to generate
             a set of devie change logs that satisfy the conditions for all of the rules
@@ -200,6 +207,143 @@ class ConflictVerification():
         
         return sorted(resultlog, key = lambda x: -x[0]) #we want sorted so that the event with timestamps farthest away to be on top
 
+    def _conflictGen(self):
+        '''
+            From the envirionment's temporal rule and immediate rule sets, generate a list of all the possible combination
+            of rules possibly giving conflicts for our tool to check.
+        '''
+        def delete_multiple_element(list_obj, indices):
+            indices = sorted(indices, reverse=True)
+            for idx in indices:
+                if idx < len(list_obj):
+                    list_obj.pop(idx)
+            return list_obj
+
+        def powerset(iterable, minlength):
+            s = list(iterable)
+            return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(minlength, len(s) + 1))
+
+        def generateImmediate(device, valuesToPick, ruleConflict, STLpickedvalues):
+            '''
+                Given an already generated ruleConflict list for STL rules, we add in
+                immediate rules to the list from values specified in valuesToPick to check for 
+                conflicts together.
+
+                Note: for a immediate rule to have conflict, they must have the same beforeState
+                but different afterState.
+
+                @param: valuesToPick: the associated values for immediate rules to pick
+                @param: ruleConflict: the picked STL rules to check conflict
+                @param: STLpickedvalues: the values associated with picked STL rules.
+                @return a list of tuple (values picked for STL, startval, valuestopick, ruleConflict, generatedimmediateRules)
+            '''
+            if device not in self.immeRule.keys():
+                return [] #no immediate rule about this
+            result = []
+            availableBeforeStates = self.deviceDict[device]
+            
+            startStates = []
+            for bstate in availableBeforeStates:
+                validStart = True
+                for values in valuesToPick:
+                    if (bstate, values) not in self.immeRule[device].keys():
+                        validStart = False
+                        break 
+                if validStart:
+                    startStates.append(bstate)
+            
+            for start in startStates:
+                vRules = []
+                for values in valuesToPick:
+                    vRules.append(self.immeRule[device][(start, values)])
+
+                for elements in itertools.product(*vRules):
+                    result.append((start, valuesToPick, ruleConflict, elements))
+            return result
+
+        ruledict = {} #a dictionary mapping device_state to (STLrule, immerules) to check for conflict
+
+        valuedict = {} #map device values to the corresponding index in the cartesian product.
+
+        for devices in self.STLRule.keys():
+            valueRules = []
+            valuedict[devices] = {}
+            index = 0
+            for values in self.STLRule[devices].keys():
+                rules = self.STLRule[devices][values]
+                temprule = []
+                for items in rules:
+                    temprule.append(items) 
+                temprule.append([]) #add in an empty list for the case none of the rule for that value is picked for conflict analysis
+                valuedict[devices][index] = values
+                index += 1
+            valueRules.append(temprule)
+        
+            allpossible = itertools.product(*valueRules)
+
+            reslist = []
+            for elements in allpossible:
+                notpicked = []
+                picked = []
+                for i in range(index):
+                    if elements[i] == []:
+                        notpicked.append(i) #record all the not picked values for STL rules, we can interlace with immediate rules
+                    else:
+                        picked.append(i)
+                
+                notpickedvalues = [valuedict[devices][idxs] for idxs in notpicked]
+                pickedvalues = [valuedict[devices][idxs] for idxs in picked]
+
+                STLRule = delete_multiple_element(list(elements), notpicked)  #delete all the not picked entry
+                if len(picked) > 1: #at least 2 temporal rule is picked, we can check for conflict
+                    reslist.append(pickedvalues, '', [], STLRule, [])
+
+                #we can pick any element of the powerset for notpickedvalues to test for conflict
+                if len(notpicked) == index: #no STL rules, just immediate rules only
+                    possibleCombinationNotPicked = powerset(notpickedvalues, 2) #we need at least 2 rules to check
+                else:
+                    possibleCombinationNotPicked = powerset(notpickedvalues, 1)
+
+                for notpickedcombinations in possibleCombinationNotPicked:
+                    reslist += generateImmediate(devices, notpickedcombinations, elements, pickedvalues)
+            
+            ruledict[devices] = reslist 
+        
+        return ruledict
+
+    def conflictAnalysis(self, outfile):
+        '''
+            Analyze all the potential direct conflicts in our environment defined by the temporal and immediate rules
+
+            A direct conflict is defined by having a log that satisfies conditions for two rules specifying different
+            behaviors at the same time.
+
+            @param: output file for logging all the possible conflicts.
+        '''
+        
+        ruledict = self._conflictGen()
+
+        with open(outfile, 'w') as out:
+            for devices in ruledict.keys():
+                out.write("Rule conflicts for device: {0} \n\n".format(devices))
+
+                for pickedSTLval, beforeState, valuesToPick, STLrules, Immerules in ruledict[devices]:
+                    checkResult, log = self.checkConflict(STLrules, Immerules)
+                    count = 1
+                    if checkResult: #a conflict happened
+                        for i in range(len(STLrules)):
+                            assovalue = pickedSTLval[i]
+                            rule = STLrules[i]
+                            out.write("{0}.Value:{1} \n\tRule:{2}\n\t".format(count, assovalue, rule))
+
+                        for i in range(len(Immerules)):
+                            assovalue = valuesToPick[i]
+                            rule = Immerules[i]
+                            out.write("{0}.BeforeValue:{1}, AfterValue:{2} \n\tRule:{3}\n\t".format(count, beforeState, assovalue, rule))
+
+                        out.write("With example violation log: \n\t\t{3}\n\n".format(LogToString(log)))
+                        count += 1
+
 
 if __name__ == '__main__':
     deviceInput = {
@@ -222,6 +366,6 @@ if __name__ == '__main__':
         ('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds')], 
     ]
 
-    print(cv.checkDontConflict(STLrules, immerule))
+    print(cv.checkConflict(STLrules, immerule))
     print('\n\n')
     print(cv.valueMap)
