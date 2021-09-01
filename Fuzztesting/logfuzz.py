@@ -307,6 +307,9 @@ class logGeneration():
                     picked_start = rulestates[random.randint(0, len(rulestates)-1)]
                     if picked_start == beforeState:
                         avail_states = [va for va in rulestates if va != picked_start and va != afterState]
+                        if len(avail_states) == 0: #we can only pick afterState as endState with our current picked start. We can simply flip the start and end.
+                            picked_start = afterState
+                            avail_states = [picked_start] #since each device has at least 2 state values, afterstate must != before state in this case.
                     else:
                         avail_states = [va for va in rulestates if va != picked_start]
                     stateval_before = getValidState(rule_device, [picked_start])

@@ -96,7 +96,7 @@ class ConflictVerification():
         #add in constraints for temporal rules
         for rules in tempRules:
             for i in range(len(rules)):
-                keyname, oper, ineq, intval, statelist, tsunit = rules[i]
+                keyname, oper, ineq, intval, statelist, _tsunit = rules[i]
                 hi, lo, dur = intval
 
                 if oper == 'G':
@@ -122,25 +122,25 @@ class ConflictVerification():
                 elif oper == 'FG':
                     primConstraint = False
                     for j in range(lo, hi-dur+1):
-                        stateConstraint = False
-                        for states in statelist:
-                            durConstraint = True
-                            for k in range(0, dur+1):
-                                durConstraint = And(durConstraint, createSTLConstraint(keyname, j+k, ineq, states))
-                            stateConstraint = Or(stateConstraint, durConstraint)
-                        primConstraint = Or(primConstraint, stateConstraint)
+                        durConstraint = True 
+                        for k in range(0, dur+1):
+                            stateConstraint = False 
+                            for states in statelist:
+                                stateConstraint = Or(stateConstraint, createSTLConstraint(keyname, j+k, ineq, states))
+                            durConstraint = And(durConstraint, stateConstraint)
+                        primConstraint = Or(primConstraint, durConstraint)
                     constraint = And(constraint, primConstraint) 
 
                 else: #GF case
                     primConstraint = True
                     for j in range(lo, hi-dur+1):
-                        stateConstraint = False
-                        for states in statelist:
-                            durConstraint = False
-                            for k in range(0, dur+1):
-                                durConstraint = Or(durConstraint, createSTLConstraint(keyname, j+k, ineq, states))
-                            stateConstraint = Or(stateConstraint, durConstraint)
-                        primConstraint = And(primConstraint, stateConstraint)
+                        durConstraint = False
+                        for k in range(0, dur+1):
+                            stateConstraint = False
+                            for states in statelist:
+                                stateConstraint = Or(stateConstraint, createSTLConstraint(keyname, j+k, ineq, states))
+                            durConstraint = Or(durConstraint, stateConstraint)
+                        primConstraint = And(primConstraint, durConstraint)
                     constraint = And(constraint, primConstraint)           
         
         #add in constraints for immediate rules
@@ -220,6 +220,9 @@ class ConflictVerification():
             return list_obj
 
         def powerset(iterable, minlength):
+            '''
+                @param minlength: each item within the result must have at least minlength members
+            '''
             s = list(iterable)
             return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(minlength, len(s) + 1))
 
@@ -238,7 +241,7 @@ class ConflictVerification():
                 @return a list of tuple (values picked for STL, startval, valuestopick, ruleConflict, generatedimmediateRules)
             '''
             if device not in self.immeRule.keys():
-                return [] #no immediate rule about this
+                return [] #no immediate rule about this, simply skip by returning empty
             result = []
             availableBeforeStates = self.deviceDict[device]
             
@@ -265,12 +268,15 @@ class ConflictVerification():
 
         valuedict = {} #map device values to the corresponding index in the cartesian product.
 
-        for devices in self.STLRule.keys():
+        for devices in self.deviceDict.keys():
             valueRules = []
             valuedict[devices] = {}
             index = 0
-            for values in self.STLRule[devices].keys():
-                rules = self.STLRule[devices][values]
+            for values in self.deviceDict[devices]:
+                try:
+                    rules = self.STLRule[devices][values]
+                except KeyError: #no rules regarding the device, but it still should be included in the tuple since there can be immediate rules
+                    rules = []
                 temprule = []
                 for items in rules:
                     temprule.append(items) 
@@ -328,10 +334,10 @@ class ConflictVerification():
         with open(outfile, 'w') as out:
             for devices in ruledict.keys():
                 out.write("Rule conflicts for device: {0} \n\n".format(devices))
+                count = 1
 
                 for pickedSTLval, beforeState, valuesToPick, STLrules, Immerules in ruledict[devices]:
                     checkResult, log = self.checkConflict(STLrules, Immerules)
-                    count = 1
                     if checkResult: #a conflict happened
                         out.write("{0} \n\t".format(count))
                         for i in range(len(STLrules)):
@@ -355,14 +361,8 @@ if __name__ == '__main__':
         'Virtual Switch1_switch': ['on', 'off'],
         'Thermostat_temperature': ['75', '95'],
     }
-    STLruleInput = {'Virtual Switch1_switch': {'on': 
-        [[('Thermostat_temperature', 'F', '<', (2, 1, -1), ['80'], 'seconds'), ('Door_lock', 'G', '>', (7, 1, -1), ['unlocked'], 'seconds')]], 
-        'off': [[('Thermostat_temperature', 'G', '>', (4, 3, -1), ['89'], 'seconds'), ('Virtual Switch 2_switch', 'F', '>', (1, 0, -1), ['off'], 'seconds'), ('Thermostat_temperature', 'FG', '<=', (5, 2, 1), ['90'], 'seconds'), ('Thermostat_temperature', 'G', '>=', (10, 1, -1), ['86'], 'seconds')]]}, 
-        'Door_lock': {'unlocked': [[('Thermostat_temperature', 'GF', '>=', (8, 7, 1), ['81'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>', (1, 0, 1), ['off'], 'seconds'), ('Virtual Switch1_switch', 'G', '>', (4, 1, -1), ['off'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '<=', (4, 0, 1), ['on'], 'seconds')], [('Virtual Switch1_switch', 'FG', '<=', (1, 0, 1), ['on'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '>=', (10, 8, 1), ['off'], 'seconds')]]}, 
-        'Virtual Switch 2_switch': {'off': [[('Door_lock', 'GF', '>=', (4, 3, 1), ['unlocked'], 'seconds'), ('Virtual Switch1_switch', 'GF', '<', (2, 0, 1), ['on'], 'seconds'), ('Thermostat_temperature', 'FG', '>=', (1, 0, 1), ['87'], 'seconds')], [('Thermostat_temperature', 'FG', '<', (7, 5, 1), ['83'], 'seconds'), ('Thermostat_temperature', 'F', '>', (5, 0, -1), ['82'], 'seconds'), ('Thermostat_temperature', 'GF', '>', (3, 2, 1), ['81'], 'seconds')]]}} 
-    ImmeruleInput = {'Virtual Switch1_switch': {('off', 'on'): [[('Door_lock', 'unlocked', 'unlocked', True, True, 'seconds'), ('Virtual Switch 2_switch', 'off', 'off', True, False, 'seconds'), ('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds')], 
-    [('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds'), ('Thermostat_temperature', '91', '91', True, True, 'seconds'), ('Virtual Switch 2_switch', 'on', 'on', True, True, 'seconds'), ('Thermostat_temperature', '83', '91', False, False, 'seconds')], ]}, 
-    'Door_lock': {('locked', 'unlocked'): [[('Thermostat_temperature', '83', '91', False, True, 'seconds'), ('Virtual Switch1_switch', 'off', 'off', True, True, 'seconds')]]}} 
+    STLruleInput = {'Virtual Switch 2_switch': {'off': [[('Door_lock', 'G', '>', (3, 2, -1), ['unlocked'], 'seconds')]], 'on': [[('Thermostat_temperature', 'FG', '>', (9, 4, 2), ['82'], 'seconds'), ('Door_lock', 'GF', '<=', (2, 0, 1), ['locked'], 'seconds'), ('Virtual Switch1_switch', 'FG', '<', (3, 1, 1), ['on'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>', (3, 1, 1), ['off'], 'seconds')]]}, 'Virtual Switch1_switch': {'on': [[('Thermostat_temperature', 'GF', '<=', (1, 0, 1), ['84'], 'seconds'), ('Thermostat_temperature', 'GF', '<', (2, 0, 1), ['82'], 'seconds')], [('Thermostat_temperature', 'FG', '>=', (6, 0, 1), ['88'], 'seconds')]]}, 'Door_lock': {'locked': [[('Thermostat_temperature', 'G', '<=', (5, 1, -1), ['85'], 'seconds')]], 'unlocked': [[('Virtual Switch 2_switch', 'FG', '<=', (8, 0, 1), ['on'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '<=', (7, 5, 1), ['on'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>=', (2, 1, 1), ['off'], 'seconds'), ('Virtual Switch1_switch', 'GF', '>=', (10, 3, 3), ['off'], 'seconds')]]}} 
+    ImmeruleInput = {'Door_lock': {('locked', 'locked'): [[('Virtual Switch1_switch', 'on', 'on', False, True, 'seconds'), ('Virtual Switch1_switch', 'on', 'on', False, True, 'seconds'), ('Virtual Switch1_switch', 'on', 'off', True, True, 'seconds'), ('Thermostat_temperature', '75', '83', True, False, 'seconds')]]}, 'Virtual Switch1_switch': {('on', 'on'): [[('Door_lock', 'unlocked', 'unlocked', False, False, 'seconds')]], ('off', 'off'): [[('Door_lock', 'unlocked', 'locked', True, False, 'seconds'), ('Door_lock', 'unlocked', 'locked', True, False, 'seconds')]]}, 'Virtual Switch 2_switch': {('off', 'on'): [[('Thermostat_temperature', '83', '91', True, True, 'seconds')]]}} 
     
     gapdict = {'Thermostat_temperature': 4}
     cv = ConflictVerification(deviceInput, STLruleInput, ImmeruleInput, gapdict, 10)
