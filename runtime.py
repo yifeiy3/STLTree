@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs
 from ParseRules import convertRules
 from MonitorRules import MonitorRules
 from Samsung.getDeviceInfo import Monitor
-from capabilities import CAPABILITY_TO_COMMAND_DICT
+from capabilities import returnCommand
 from scheduling import Scheduler
 
 import argparse
@@ -53,7 +53,8 @@ class MyServer(BaseHTTPRequestHandler):
             device = query['device'][0]
             deviceid = devicedict[device][0]
             #get the command corresponding to state and value that the device should be.
-            stateChgCmd = CAPABILITY_TO_COMMAND_DICT[currentquery[2]][currentquery[3]]
+            #we dont need param since its always discrete variables.
+            stateChgCmd, _param = returnCommand(currentquery[2], currentquery[3])
             self.dm.changeDeviceState(deviceid, device, stateChgCmd)
             print("Changing device state due to DONT rule violation through command: {0}".format(stateChgCmd))
                

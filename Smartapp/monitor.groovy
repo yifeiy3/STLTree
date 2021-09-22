@@ -125,6 +125,11 @@ mappings {
         	GET: "monitorURL"
         ]
    }
+   	path("/simulate"){
+    	action: [
+        	GET: "simulateURL"
+        ]
+    }
 }
 
 def installed() {
@@ -224,6 +229,67 @@ def monitorURL() {
     def device = getThing(devid)
     log.debug "device $params.name 's state has been changed by $cmd command."
     device."$cmd"()
+}
+
+/*
+	Simulate rule's conflict log based on $params.changelog
+*/
+def simulateURL() {
+    def changeLog = params.changelog
+    def unflattenedLog = []
+    def itemLog = []
+    def systemDevices = getThings('all')
+    
+    //for some reason, lists are passed in as flattened, we need to unflatten them so they correspond to each log
+	changeLog.eachWithIndex{
+    	item, idx -> 
+        	if(idx % 4 == 0){
+            	itemLog = [item]
+                if(item.toInteger() == 0){
+                	log.debug "All state change should have delay, exit early"
+                    return false
+                }
+            }
+            else if(idx % 4 == 1){
+            	def deviceid = systemDevices.findResult{
+                	it.name == item ? it.id : null
+                }
+                if(deviceid == null){
+                	log.debug "Unable to find device with name ${item}, exit early"
+                    return false
+                }
+  
+            	itemLog.add(deviceid)
+            }
+            else if(idx % 4 == 2){
+            	itemLog.add(item)
+            }
+            else{
+            	itemLog.add(item)
+                unflattenedLog.add(itemLog)
+            }
+    }
+    unflattenedLog.each{
+   		simulate(it[0], it[1], it[2], it[3])
+    }
+    return true
+}
+
+def simulate(delayTimer, deviceid, simulatefunction, funcparam){
+	def delayTime = delayTimer.toInteger()
+    log.debug "${deviceid} , delaytime : ${delayTime}"
+    def theParam = funcparam == '' ? null : funcparam.toInteger()
+   
+	runIn(delayTimer.toInteger(), runSimulate, [data:[deviceid: deviceid, simulatefunc: simulatefunction, funcparam: theParam], overwrite:false])
+}
+
+def runSimulate(data){
+	def device = getThing(data.deviceid)
+    def simulatefunction = data.simulatefunc
+    def funcparam = data.funcparam
+	log.debug "This is called with $device under function $simulatefunction"
+    
+    funcparam == null ? device."$simulatefunction"() : device."$simulatefunction"(funcparam)
 }
 
 /**

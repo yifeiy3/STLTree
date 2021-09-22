@@ -1,5 +1,6 @@
 from z3 import *
 import itertools
+import pickle 
 
 def LogToString(events):
     s = ''
@@ -11,8 +12,6 @@ class ConflictVerification():
     '''
         A class check for if it is possible to have any direct conflicts between learned rules.
         if possible, the tool will return an example log of device changes showing the conflict
-
-        Method: check pairs first, then combine the conflicts into groups using union find?
     '''
     def __init__(self, devices, tempDontrules, immeDontrules, gapdict, timebound):
         ''' 
@@ -285,7 +284,7 @@ class ConflictVerification():
                 index += 1
                 valueRules.append(temprule)
 
-            allpossible = itertools.product(*valueRules)
+            allpossible = itertools.product(*valueRules) #cartesian product
 
             reslist = []
             for elements in allpossible:
@@ -319,17 +318,20 @@ class ConflictVerification():
         
         return ruledict
 
-    def conflictAnalysis(self, outfile):
+    def conflictAnalysis(self, outfile, resultdict):
         '''
             Analyze all the potential direct conflicts in our environment defined by the temporal and immediate rules
 
             A direct conflict is defined by having a log that satisfies conditions for two rules specifying different
             behaviors at the same time.
 
-            @param: output file for logging all the possible conflicts.
+            @param: outfile: output file for logging all the possible conflicts.
+            @param: resultdict: a pickle uploaded file on a list of 3-tuple: (STLrules, Immerules, Log) for rules that
+            has a conflict, this is used to simulate on Samsung Smarthub.
         '''
         
         ruledict = self._conflictGen()
+        conflicts = []
 
         with open(outfile, 'w') as out:
             for devices in ruledict.keys():
@@ -351,8 +353,11 @@ class ConflictVerification():
                             out.write("BeforeValue:{0}, AfterValue:{1} \n\tRule:{2}\n\t".format(beforeState, assovalue, rule))
 
                         out.write("With example violation log: \n\t\t{0}\n\n".format(LogToString(log)))
+                        conflicts.append((STLrules, Immerules, log))
                         count += 1
 
+        with open(resultdict, 'wb') as outLog:
+            pickle.dump((self.timebound, conflicts), outLog, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
     deviceInput = {
@@ -361,8 +366,8 @@ if __name__ == '__main__':
         'Virtual Switch1_switch': ['on', 'off'],
         'Thermostat_temperature': ['75', '95'],
     }
-    STLruleInput = {'Virtual Switch 2_switch': {'off': [[('Door_lock', 'G', '>', (3, 2, -1), ['unlocked'], 'seconds')]], 'on': [[('Thermostat_temperature', 'FG', '>', (9, 4, 2), ['82'], 'seconds'), ('Door_lock', 'GF', '<=', (2, 0, 1), ['locked'], 'seconds'), ('Virtual Switch1_switch', 'FG', '<', (3, 1, 1), ['on'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>', (3, 1, 1), ['off'], 'seconds')]]}, 'Virtual Switch1_switch': {'on': [[('Thermostat_temperature', 'GF', '<=', (1, 0, 1), ['84'], 'seconds'), ('Thermostat_temperature', 'GF', '<', (2, 0, 1), ['82'], 'seconds')], [('Thermostat_temperature', 'FG', '>=', (6, 0, 1), ['88'], 'seconds')]]}, 'Door_lock': {'locked': [[('Thermostat_temperature', 'G', '<=', (5, 1, -1), ['85'], 'seconds')]], 'unlocked': [[('Virtual Switch 2_switch', 'FG', '<=', (8, 0, 1), ['on'], 'seconds'), ('Virtual Switch 2_switch', 'FG', '<=', (7, 5, 1), ['on'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>=', (2, 1, 1), ['off'], 'seconds'), ('Virtual Switch1_switch', 'GF', '>=', (10, 3, 3), ['off'], 'seconds')]]}} 
-    ImmeruleInput = {'Door_lock': {('locked', 'locked'): [[('Virtual Switch1_switch', 'on', 'on', False, True, 'seconds'), ('Virtual Switch1_switch', 'on', 'on', False, True, 'seconds'), ('Virtual Switch1_switch', 'on', 'off', True, True, 'seconds'), ('Thermostat_temperature', '75', '83', True, False, 'seconds')]]}, 'Virtual Switch1_switch': {('on', 'on'): [[('Door_lock', 'unlocked', 'unlocked', False, False, 'seconds')]], ('off', 'off'): [[('Door_lock', 'unlocked', 'locked', True, False, 'seconds'), ('Door_lock', 'unlocked', 'locked', True, False, 'seconds')]]}, 'Virtual Switch 2_switch': {('off', 'on'): [[('Thermostat_temperature', '83', '91', True, True, 'seconds')]]}} 
+    STLruleInput = {'Virtual Switch 2_switch': {'on': [[('Virtual Switch1_switch', 'F', '>=', (4, 3, -1), ['off'], 'seconds')], [('Virtual Switch1_switch', 'GF', '>', (9, 8, 1), ['off'], 'seconds'), ('Door_lock', 'GF', '<', (1, 0, 1), ['locked'], 'seconds')]], 'off': [[('Virtual Switch1_switch', 'F', '>', (8, 3, -1), ['off'], 'seconds'), ('Door_lock', 'G', '<=', (5, 3, -1), ['locked'], 'seconds')], [('Thermostat_temperature', 'FG', '>', (7, 3, 2), ['90'], 'seconds'), ('Virtual Switch1_switch', 'GF', '>=', (6, 5, 1), ['off'], 'seconds'), ('Door_lock', 'F', '>', (4, 2, -1), ['unlocked'], 'seconds')]]}, 'Door_lock': {'locked': [[('Virtual Switch 2_switch', 'G', '>=', (3, 2, -1), ['off'], 'seconds')], [('Thermostat_temperature', 'GF', '<=', (10, 4, 3), ['89'], 'seconds'), ('Virtual Switch1_switch', 'FG', '>=', (1, 0, 1), ['off'], 'seconds'), ('Virtual Switch 2_switch', 'F', '<=', (10, 9, -1), ['on'], 'seconds')]], 'unlocked': [[('Virtual Switch 2_switch', 'G', '>=', (2, 0, -1), ['off'], 'seconds')]]}, 'Virtual Switch1_switch': {'on': [[('Door_lock', 'F', '<', (9, 0, -1), ['locked'], 'seconds')]], 'off': [[('Thermostat_temperature', 'GF', '>=', (3, 0, 1), ['85'], 'seconds'), ('Thermostat_temperature', 'FG', '>=', (2, 0, 1), ['85'], 'seconds'), ('Door_lock', 'FG', '<=', (8, 2, 2), ['locked'], 'seconds')]]}} 
+    ImmeruleInput = {'Virtual Switch 2_switch': {('off', 'on'): [[('Thermostat_temperature', '83', '83', False, False, 'seconds'), ('Virtual Switch1_switch', 'on', 'off', True, True, 'seconds'), ('Thermostat_temperature', '91', '91', False, False, 'seconds')]]}} 
     
     gapdict = {'Thermostat_temperature': 4}
     cv = ConflictVerification(deviceInput, STLruleInput, ImmeruleInput, gapdict, 10)
@@ -376,4 +381,4 @@ if __name__ == '__main__':
         ('Virtual Switch 2_switch', 'off', 'on', False, True, 'seconds')], 
     ]
 
-    cv.conflictAnalysis('analysisResult.txt')
+    cv.conflictAnalysis('analysisResult.txt', 'analysisResult.pkl')

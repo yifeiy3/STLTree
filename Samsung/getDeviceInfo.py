@@ -12,13 +12,20 @@ class Monitor():
         return res.json()
     
     def changeDeviceState(self, deviceId, deviceName, command):
-        url = self._endpoint + "/monitorControl".format(deviceId, command)
+        url = self._endpoint + "/monitorControl"
         headers = {"Authorization":"Bearer {0}".format(self._key)}
         param = {"id": deviceId,
                  "cmd": command,
                  "name": deviceName}
         _res = requests.get(url, headers = headers, params = param)
 
+    def simulateLog(self, processedLog):
+        url = self._endpoint + "/simulate"
+        headers = {"Authorization":"Bearer {0}".format(self._key)}
+        param = {"changelog": processedLog}
+        res = requests.get(url, headers = headers, params = param)
+        return res
+        
     def getThings(self, thing):
         param = {"function":"things",
             "kind":thing}
